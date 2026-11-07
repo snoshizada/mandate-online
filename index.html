@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mandate Online - Nation Governance Game</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="css/style.css?v=0.5.0">
+</head>
+<body>
+<div id="wrapper">
+
+  <div id="header">
+    <table><tr>
+      <td>
+        <span id="flag"></span>
+        <span id="countryname">Mandate Online</span><br>
+        <span id="subline">Nation Governance Game</span>
+      </td>
+      <td id="turnbox">
+        <span id="datebox"></span><br>
+        <button id="adv1" onclick="advance(1)" title="Advance one week">Advance 1 week &raquo;</button>
+        <button id="adv4" onclick="advance(4)" title="Advance 4 weeks (stops for urgent events)">4 weeks</button>
+        <button id="adv13" onclick="advance(13)" title="Advance 13 weeks (stops for urgent events)">13 weeks</button><br>
+        <span id="savestatus">Not saved</span>
+      </td>
+    </tr></table>
+  </div>
+  <div id="topbar">You are here: <span id="crumb">Home</span></div>
+
+  <table id="layout"><tr>
+    <td id="nav">
+      <div class="navhead">GOVERNMENT</div>
+      <ul>
+        <li><a href="#dashboard">National Dashboard</a></li>
+        <li><a href="#cabinet">Cabinet and Ministries</a></li>
+        <li><a href="#parliament">Parliament</a></li>
+        <li><a href="#law">Constitution and Law</a></li>
+        <li><a href="#lawmaker"><b>Write a Law</b></a></li>
+        <li><a href="#identity">National Identity</a></li>
+        <li><a href="#profile">Country Profile</a></li>
+        <li><a href="#economy">Economy</a></li>
+        <li><a href="#treasury">Treasury and Budget</a></li>
+        <li><a href="#population">Population and Society</a></li>
+        <li><a href="#services">Public Services</a></li>
+        <li><a href="#agencies">Agencies and Priorities</a></li>
+        <li><a href="#stakeholders">Unions, Business and Groups</a></li>
+        <li><a href="#elections">Elections and Parties</a></li>
+        <li><a href="#regions">Regions</a></li>
+        <li><a href="#foreign">Foreign Affairs</a></li>
+        <li><a href="#diplomacy">Diplomacy and Alliances</a></li>
+        <li><a href="#defence">Defence and Security</a></li>
+        <li><a href="#news">Media and News</a></li>
+        <li><a href="#stats">National Statistics</a></li>
+        <li><a href="#archive">Historical Archive</a></li>
+        <li><a href="#settings">Settings and Save Games</a></li>
+      </ul>
+      <div class="navhead">YOUR MOVEMENT</div>
+      <ul>
+        <li><a href="#ideology"><b>Ideology and Manifesto</b></a></li>
+        <li><a href="#movement">Party and Movement</a></li>
+        <li><a href="#leader">Leader Profile</a></li>
+        <li><a href="#scorecard">National Scorecard</a></li>
+      </ul>
+      <div class="navhead">THE WORLD (ONLINE)</div>
+      <ul>
+        <li><a href="#world"><b>World home</b></a><span id="worldbadge"></span></li>
+        <li><a href="#world/nations">Nations and rankings</a></li>
+        <li><a href="#world/mail">Mail</a></li>
+        <li><a href="#world/treaties">Treaties with players</a></li>
+        <li><a href="#world/orgs">World organisations</a></li>
+        <li><a href="#world/news">World news</a></li>
+        <li><a href="#world/forum">Forum</a></li>
+      </ul>
+      <div class="navhead">HELP</div>
+      <ul>
+        <li><a href="#learn"><b>Learn to Play</b></a></li>
+        <li><a href="#glossary">Glossary</a></li>
+        <li><a href="#help">How to play</a></li>
+      </ul>
+    </td>
+    <td id="main">Loading... (you need JavaScript turned on)</td>
+    <td id="side"></td>
+  </tr></table>
+
+  <div id="footer">
+    Mandate Online is a work of fiction. All countries, people and parties are made up.
+    The model is a game, not a forecast of the real world. | Best viewed at 1280x800 |
+    <a href="tests.html">Run self tests</a>
+  </div>
+</div>
+
+<script src="js/data.js?v=0.5.0"></script>
+<script src="js/sim.js?v=0.5.0"></script>
+<script src="js/regime.js?v=0.5.0"></script>
+<script src="js/lawdata.js?v=0.5.0"></script>
+<script src="js/laws.js?v=0.5.0"></script>
+<script src="js/news.js?v=0.5.0"></script>
+<script src="js/ideology.js?v=0.5.0"></script>
+<script src="js/arms.js?v=0.5.0"></script>
+<script src="js/charts.js?v=0.5.0"></script>
+<script src="js/pages.js?v=0.5.0"></script>
+<script src="js/builder.js?v=0.5.0"></script>
+<script src="js/lawpages.js?v=0.5.0"></script>
+<script src="js/newspages.js?v=0.5.0"></script>
+<script src="js/learn.js?v=0.5.0"></script>
+<script src="js/ideopages.js?v=0.5.0"></script>
+<script src="js/config.js?v=0.5.0"></script>
+<script src="js/online.js?v=0.5.0"></script>
+<script src="js/worldpages.js?v=0.5.0"></script>
+<script src="js/main.js?v=0.5.0"></script>
+</body>
+</html>
