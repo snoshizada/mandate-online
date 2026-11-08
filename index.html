@@ -4813,55 +4813,31 @@ function weeksDue(clock, now) {
 
 </script>
 <script>
-var SHIELDS = {
-  heater: "M5,5 H95 V45 C95,75 70,92 50,98 C30,92 5,75 5,45 Z",
-  round: "M5,5 H95 V50 A45,45 0 0 1 5,50 Z",
-  square: "M5,5 H95 V95 H5 Z",
-  swiss: "M5,5 Q50,15 95,5 V55 C95,80 70,95 50,98 C30,95 5,80 5,55 Z",
-  oval: "M50,3 C80,3 95,25 95,50 C95,75 80,97 50,97 C20,97 5,75 5,50 C5,25 20,3 50,3 Z"
-};
-var ARMS_DIVS = [["none", "Plain"], ["pale", "Split down the middle"], ["fess", "Split across"], ["quarterly", "Quartered"], ["chevron", "Chevron"], ["bend", "Diagonal band"], ["cross", "Cross"], ["border", "Border"]];
-var ARMS_CHARGES = [["none", "Nothing"], ["star", "Star"], ["sun", "Sun"], ["crescent", "Crescent moon"], ["tree", "Tree"], ["gear", "Gear"], ["wheat", "Wheat"], ["wave", "Waves"], ["mountain", "Mountain"], ["tower", "Tower"], ["crown", "Crown"], ["anchor", "Anchor"], ["book", "Book"], ["fist", "Raised fist"], ["dove", "Dove"]];
-function defaultArms(g) {
-  var f = (g.country.flag || ["#17345B", "#FFFFFF", "#C8102E"]);
-  return { shield: "heater", field: f[0] || "#17345B", div: "none", field2: f[1] || "#FFFFFF", charge: "star", chargeColor: f[2] || f[1] || "#C8A400", motto: true };
-}
-function chargeSvg(c, col) {
-  var s = "";
-  if (c == "star") s = "<polygon points='50,26 56,43 74,43 60,54 65,71 50,61 35,71 40,54 26,43 44,43' fill='" + col + "'/>";
-  if (c == "sun") { s = "<circle cx=50 cy=48 r=11 fill='" + col + "'/>"; for (var i = 0; i < 12; i++) { var a = i * Math.PI / 6; s += "<line x1=" + (50 + Math.cos(a) * 14).toFixed(1) + " y1=" + (48 + Math.sin(a) * 14).toFixed(1) + " x2=" + (50 + Math.cos(a) * 22).toFixed(1) + " y2=" + (48 + Math.sin(a) * 22).toFixed(1) + " stroke='" + col + "' stroke-width=3/>"; } }
-  if (c == "crescent") s = "<path d='M58,28 A20,20 0 1 0 58,68 A16,16 0 1 1 58,28 Z' fill='" + col + "'/>";
-  if (c == "tree") s = "<polygon points='50,24 68,52 58,52 70,66 30,66 42,52 32,52' fill='" + col + "'/><rect x=46 y=66 width=8 height=10 fill='" + col + "'/>";
-  if (c == "gear") s = "<circle cx=50 cy=48 r=15 fill='none' stroke='" + col + "' stroke-width=8 stroke-dasharray='6 4'/><circle cx=50 cy=48 r=11 fill='none' stroke='" + col + "' stroke-width=4/>";
-  if (c == "wheat") { s = "<line x1=50 y1=26 x2=50 y2=74 stroke='" + col + "' stroke-width=3/>"; for (var i = 0; i < 5; i++) s += "<ellipse cx=44 cy=" + (32 + i * 8) + " rx=5 ry=3 fill='" + col + "' transform='rotate(-30 44 " + (32 + i * 8) + ")'/><ellipse cx=56 cy=" + (32 + i * 8) + " rx=5 ry=3 fill='" + col + "' transform='rotate(30 56 " + (32 + i * 8) + ")'/>"; }
-  if (c == "wave") for (var i = 0; i < 3; i++) s += "<path d='M24," + (38 + i * 10) + " Q31," + (32 + i * 10) + " 37," + (38 + i * 10) + " T50," + (38 + i * 10) + " T63," + (38 + i * 10) + " T76," + (38 + i * 10) + "' fill='none' stroke='" + col + "' stroke-width=4/>";
-  if (c == "mountain") s = "<polygon points='22,70 42,32 52,48 60,38 78,70' fill='" + col + "'/>";
-  if (c == "tower") s = "<path d='M36,74 V40 H40 V34 H45 V40 H48 V34 H52 V40 H55 V34 H60 V40 H64 V74 Z' fill='" + col + "'/><rect x=46 y=58 width=8 height=16 fill='#000' opacity=0.35/>";
-  if (c == "crown") s = "<path d='M28,62 L30,36 L40,50 L50,30 L60,50 L70,36 L72,62 Z' fill='" + col + "'/><rect x=28 y=62 width=44 height=7 fill='" + col + "'/>";
-  if (c == "anchor") s = "<circle cx=50 cy=30 r=5 fill='none' stroke='" + col + "' stroke-width=3/><line x1=50 y1=35 x2=50 y2=72 stroke='" + col + "' stroke-width=4/><line x1=40 y1=44 x2=60 y2=44 stroke='" + col + "' stroke-width=3/><path d='M30,58 Q32,74 50,74 Q68,74 70,58' fill='none' stroke='" + col + "' stroke-width=4/>";
-  if (c == "book") s = "<path d='M26,34 Q38,30 50,36 Q62,30 74,34 V66 Q62,62 50,68 Q38,62 26,66 Z' fill='" + col + "'/><line x1=50 y1=36 x2=50 y2=68 stroke='#000' stroke-width=1.5 opacity=0.4/>";
-  if (c == "fist") s = "<rect x=40 y=46 width=20 height=28 rx=3 fill='" + col + "'/><rect x=38 y=30 width=24 height=20 rx=5 fill='" + col + "'/>";
-  if (c == "dove") s = "<path d='M28,52 Q40,36 56,42 L72,32 L64,46 Q62,62 44,62 L36,70 L38,60 Q30,58 28,52 Z' fill='" + col + "'/>";
-  return s;
-}
 function armsSvg(A, size) {
   A = A || {}; size = size || 100;
-  var sh = SHIELDS[A.shield] || SHIELDS.heater, id = "cl" + Math.floor(Math.random() * 1e9);
-  var f2 = A.field2 || "#FFFFFF", d = "";
-  if (A.div == "pale") d = "<rect x=50 y=0 width=50 height=100 fill='" + f2 + "'/>";
-  if (A.div == "fess") d = "<rect x=0 y=50 width=100 height=50 fill='" + f2 + "'/>";
-  if (A.div == "quarterly") d = "<rect x=50 y=0 width=50 height=50 fill='" + f2 + "'/><rect x=0 y=50 width=50 height=50 fill='" + f2 + "'/>";
-  if (A.div == "chevron") d = "<polygon points='0,90 50,45 100,90 100,100 0,100' fill='" + f2 + "'/>";
-  if (A.div == "bend") d = "<polygon points='0,0 25,0 100,75 100,100 75,100 0,25' fill='" + f2 + "'/>";
-  if (A.div == "cross") d = "<rect x=42 y=0 width=16 height=100 fill='" + f2 + "'/><rect x=0 y=40 width=100 height=16 fill='" + f2 + "'/>";
-  if (A.div == "border") d = "<path d='" + sh + "' fill='none' stroke='" + f2 + "' stroke-width=14/>";
-  var h = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 " + (A.motto ? 118 : 100) + "' width=" + size + " height=" + Math.round(size * (A.motto ? 1.18 : 1)) + " style='vertical-align:middle'>";
-  h += "<defs><clipPath id='" + id + "'><path d='" + sh + "'/></clipPath></defs>";
-  h += "<g clip-path='url(#" + id + ")'><rect x=0 y=0 width=100 height=100 fill='" + (A.field || "#17345B") + "'/>" + d + "</g>";
-  h += chargeSvg(A.charge, A.chargeColor || "#C8A400");
-  h += "<path d='" + sh + "' fill='none' stroke='#222' stroke-width=2.5/>";
-  if (A.motto) h += "<path d='M8,104 L92,104 L88,111 L92,117 L8,117 L12,111 Z' fill='#F4E9C8' stroke='#8A6D2B' stroke-width=1/><text x=50 y=113.5 font-size=6.5 text-anchor='middle' font-family='Georgia,serif' fill='#3A2A10'>" + esc(String(A.mottoText || "").slice(0, 34)) + "</text>";
-  return h + "</svg>";
+  var img = cleanPng(A.img);
+  if (!img) return "";
+  return "<img src='" + img + "' width=" + size + " alt='Coat of arms' style='vertical-align:middle;max-height:" + Math.round(size * 1.5) + "px;object-fit:contain'>";
+}
+function pngShrink(f, maxW, cb) {
+  if (!f) return;
+  if (f.type != "image/png") { alert("Please pick a PNG picture."); return; }
+  var rd = new FileReader();
+  rd.onload = function () {
+    var im = new Image();
+    im.onload = function () {
+      var w = im.width, hh = im.height;
+      if (w > maxW) { hh = Math.round(hh * maxW / w); w = maxW; }
+      var cv = document.createElement("canvas"); cv.width = w; cv.height = hh;
+      cv.getContext("2d").drawImage(im, 0, 0, w, hh);
+      var url = cv.toDataURL("image/png");
+      if (!cleanPng(url)) { alert("That picture is too big. Try a smaller one."); return; }
+      cb(url);
+    };
+    im.onerror = function () { alert("Couldn't read that picture."); };
+    im.src = rd.result;
+  };
+  rd.readAsDataURL(f);
 }
 var LEADER_JOBS = [["", "Career politician (no bonus)"], ["lawyer", "Lawyer (+2 legitimacy)"], ["teacher", "Teacher (students like you)"], ["soldier", "Soldier (+3 army loyalty)"], ["union", "Union organiser (unions like you)"],
   ["business", "Business owner (business likes you)"], ["doctor", "Doctor (slightly better health results)"], ["farmer", "Farmer (farmers like you)"], ["activist", "Activist (party members more enthusiastic)"],
@@ -7239,27 +7215,7 @@ PAGES.leader = function () {
   return h;
 };
 function jobName(id) { for (var i = 0; i < LEADER_JOBS.length; i++) if (LEADER_JOBS[i][0] == id) return LEADER_JOBS[i][1].replace(/ \(.*\)$/, ""); return "Career politician"; }
-function ldPic(inp) {
-  var f = inp.files[0];
-  if (!f) return;
-  if (f.type != "image/png") { alert("Please pick a PNG picture."); return; }
-  var rd = new FileReader();
-  rd.onload = function () {
-    var im = new Image();
-    im.onload = function () {
-      var w = im.width, hh = im.height;
-      if (w > 300) { hh = Math.round(hh * 300 / w); w = 300; }
-      var cv = document.createElement("canvas"); cv.width = w; cv.height = hh;
-      cv.getContext("2d").drawImage(im, 0, 0, w, hh);
-      var url = cv.toDataURL("image/png");
-      if (!cleanPng(url)) { alert("That picture is too big. Try a smaller one."); return; }
-      game.leader.img = url; autosave(); route();
-    };
-    im.onerror = function () { alert("Couldn't read that picture."); };
-    im.src = rd.result;
-  };
-  rd.readAsDataURL(f);
-}
+function ldPic(inp) { pngShrink(inp.files[0], 300, function (url) { game.leader.img = url; autosave(); route(); }); }
 function ldPicOff() { delete game.leader.img; autosave(); route(); }
 function ldSave() {
   var g = game, L = copy(g.leader);
@@ -7284,8 +7240,7 @@ PAGES.diplomacy = function () { return PAGES.foreign(); };
 
 PAGES.profile = function () {
   var g = game, mv = ensureMovement(g), C = g.country, sc = scorecard(g);
-  var A = C.arms || defaultArms(g);
-  if (A.motto) A.mottoText = C.motto;
+  var A = C.arms || {};
   var h = "<h1 style='text-align:center'>" + esc(C.name) + "</h1><div class='pagedate'></div>";
   h += "<table class='data' style='margin:0 auto'><tr><td style='text-align:center'>" + flagHtml(C, 150, 100) + "</td><td style='text-align:center'>" + armsSvg(A, 110) + "</td></tr></table>";
   if (C.motto) h += "<p style='text-align:center;font-family:Georgia,serif;font-size:16px'><i>&ldquo;" + esc(C.motto) + "&rdquo;</i></p>";
@@ -7304,17 +7259,10 @@ PAGES.profile = function () {
   return h;
 };
 
-var idArms = null;
 function identityExtrasHtml(g) {
-  var C = g.country;
-  if (!idArms) idArms = copy(C.arms || defaultArms(g));
-  var A = idArms;
-  var h = "<h2>Coat of arms</h2><table class='data'><tr><td style='text-align:center;width:140px'><div id='arms_prev'>" + armsSvg(Object.assign({}, A, { mottoText: C.motto }), 110) + "</div></td><td><table>";
-  h += "<tr><td>Shield</td><td><select id='ar_shield' onchange='armsPrev()'>" + Object.keys(SHIELDS).map(function (k) { return "<option" + (A.shield == k ? " selected" : "") + ">" + k + "</option>"; }).join("") + "</select></td></tr>";
-  h += "<tr><td>Colours</td><td><input type='color' id='ar_field' value='" + esc(A.field) + "' onchange='armsPrev()'> <input type='color' id='ar_field2' value='" + esc(A.field2) + "' onchange='armsPrev()'> pattern <select id='ar_div' onchange='armsPrev()'>" + ARMS_DIVS.map(function (o) { return "<option value='" + o[0] + "'" + (A.div == o[0] ? " selected" : "") + ">" + o[1] + "</option>"; }).join("") + "</select></td></tr>";
-  h += "<tr><td>Symbol</td><td><select id='ar_charge' onchange='armsPrev()'>" + ARMS_CHARGES.map(function (o) { return "<option value='" + o[0] + "'" + (A.charge == o[0] ? " selected" : "") + ">" + o[1] + "</option>"; }).join("") + "</select> <input type='color' id='ar_cc' value='" + esc(A.chargeColor) + "' onchange='armsPrev()'></td></tr>";
-  h += "<tr><td>Motto ribbon</td><td><label><input type='checkbox' id='ar_motto'" + (A.motto ? " checked" : "") + " onchange='armsPrev()'> show the national motto</label></td></tr></table>";
-  h += "<button onclick='armsSave()'>Adopt this coat of arms</button></td></tr></table>";
+  var C = g.country, A = C.arms || {};
+  var h = "<h2>Coat of arms</h2><table class='data'><tr><td style='text-align:center;width:140px'>" + (armsSvg(A, 110) || "<div class='small' style='width:110px;height:120px;border:1px dashed #999;line-height:120px'>none</div>") + "</td><td>";
+  h += "<p>Upload a PNG of your coat of arms if you want one. It's optional.</p><p><input type='file' accept='image/png' onchange='armsPic(this)'>" + (A.img ? " <button onclick='armsOff()'>Remove it</button>" : "") + "</p><p class='small'>Big pictures are shrunk to 300 pixels wide. It shows on the Country Profile and to other players online.</p></td></tr></table>";
   h += "<h2>Story, places and holidays</h2><p class='small'>These are yours to write. They appear on the <a href='#profile'>Country Profile</a>, in the news and in celebrations.</p><table class='data'>";
   h += "<tr><th>National colours</th><td>" + [0, 1, 2].map(function (i) { return "<input type='color' id='nc_" + i + "' value='" + esc((C.colors || C.flag || [])[i] || "#FFFFFF") + "'>"; }).join(" ") + " <label><input type='checkbox' id='nc_use'" + (C.useColors ? " checked" : "") + "> use the first one for the website header</label></td></tr>";
   h += "<tr><th>Founding story</th><td><textarea id='id_story' rows=5 cols=70 maxlength=3000 placeholder='How did your nation come to be?'>" + esc(C.story || "") + "</textarea></td></tr>";
@@ -7328,9 +7276,15 @@ function identityExtrasHtml(g) {
   h += "</table>";
   return h;
 }
-function armsRead() { return { shield: $("ar_shield").value, field: $("ar_field").value, field2: $("ar_field2").value, div: $("ar_div").value, charge: $("ar_charge").value, chargeColor: $("ar_cc").value, motto: $("ar_motto").checked }; }
-function armsPrev() { idArms = armsRead(); $("arms_prev").innerHTML = armsSvg(Object.assign({}, idArms, { mottoText: game.country.motto }), 110); }
-function armsSave() { var g = game; g.country.arms = armsRead(); idArms = null; addEvent(g, "symbols", 1, g.country.name + " unveils a new coat of arms", {}, "", 0); autosave(); route(); }
+function armsPic(inp) {
+  pngShrink(inp.files[0], 300, function (url) {
+    pngShrink(inp.files[0], 96, function (small) {
+      var g = game; g.country.arms = { img: url, small: small };
+      addEvent(g, "symbols", 1, g.country.name + " unveils a new coat of arms", {}, "", 0); autosave(); route();
+    });
+  });
+}
+function armsOff() { delete game.country.arms; autosave(); route(); }
 function storySave() {
   var C = game.country;
   C.story = $("id_story").value.slice(0, 3000); C.profileText = $("id_prof").value.slice(0, 3000);
@@ -7528,15 +7482,15 @@ function nationRow(g){
 }
 function cleanArms(arm){
   if(!arm || typeof arm !="object") return null;
-  var col = function(cfg, dat){ return /^#[0-9a-f]{6}$/i.test(cfg) ? cfg : dat; };
-  var inList = function(val, list){ for(var i = 0; i < list.length; i++) if(list[i][0] == val) return val; return "none"; };
-  return { shield: SHIELDS[arm.shield] ? arm.shield : "heater", field: col(arm.field, "#17345B"), field2: col(arm.field2, "#FFFFFF"),div: inList(arm.div,ARMS_DIVS), charge: inList(arm.charge, ARMS_CHARGES), chargeColor: col(arm.chargeColor, "#C8A400"), motto: !!arm.motto };
+  var img = cleanPng(arm.small || arm.img);
+  if(!img || img.length > 55000) return null;
+  return { img: img };
 }
 function remoteFlag(nat,ww, html){
   var fnc = nat.flag && nat.flag.colors ? cleanFlag(nat.flag.colors) : null;
   return flagHtml({ flag: fnc || ["#999999"], flagVertical: !!(nat.flag && nat.flag.vertical) }, ww,html);
 }
-function remoteArms(nat, size){ var arm = cleanArms(nat.arms); if(!arm) return ""; arm.mottoText = nat.motto || ""; return armsSvg(arm, size); }
+function remoteArms(nat, size){ var arm = cleanArms(nat.arms); if(!arm) return ""; return armsSvg(arm, size); }
 
 function publishNation(quiet){
  if(!ON.sb || !ON.user || !game) return Promise.resolve();
