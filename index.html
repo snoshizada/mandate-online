@@ -7604,15 +7604,15 @@ PAGES.world = function(arg){
   var html = title("The World Online");
  html += wTabs(tab== "nation" ? "nations" : (tab == "org" ? "orgs" : (tab =="thread" ? "forum" : tab)));
   if(wFlash){ html += "<div class='box' style='background:#E8F4E8'>" +esc(wFlash) +"</div>"; wFlash = ""; }
-  if(tab== "account") return html+ wAccount();
   if(!onlineOn()){
     html += "<h2>Not connected yet</h2><p>The online world lets you publish your nation, see other players' countries, send them messages, sign treaties that really change your economy, found world organisations together, and post in the world news and forum.</p>";
-    html += "<p>The online world isn't switched on in this copy of the game yet.</p>";
+    html += "<p>The online world isn't switched on in this copy of the game yet.</p><p class='small'>If you run this site: put your Supabase Project URL and publishable key in <b>js/config.js</b> and upload it.</p>";
     return html + "<p>Everything else in the game works offline as before.</p>";
  }
   if(!ON.ready){ onlineStart(wcRedraw); return html + "<p><i>Connecting to the online world...</i></p>"; }
   if(ON.err){ html += "<div class='box' style='background:#FCE8E8'>" + esc(ON.err) + " <a href='javascript:ON.err=\"\";wcClear();wcRedraw()'>(try again)</a></div>"; }
   if(!ON.sb) return html;
+  if(tab== "account") return html+ wAccount();
   if(ON.ban) html += "<div class='box' style='background:#FCE8E8'><b>You are banned from posting</b>" + (ON.ban.until ? " until "+ esc(new Date(ON.ban.until).toLocaleString()) : "")+ ". Reason: " + esc(ON.ban.reason || "none given") + "</div>";
   var fnc = { "": wHome, nations: wNations, nation: wNationPage, mail: wMail, treaties: wTreaties, orgs: wOrgs, org: wOrgPage, news: wNews, forum: wForum, thread: wThread, admin: wAdmin }[tab];
   if(!fnc) fnc = wHome;
@@ -7960,7 +7960,7 @@ function wAccount(){
    html += "<h3>Options</h3><p><label><input type='checkbox'" +(thing.auto ? " checked" : "") +" onchange='wOpt(\"auto\",this.checked)'> publish my nation automatically after each turn</label><br><label><input type='checkbox'" + (thing.events ? " checked" : "") + " onchange='wOpt(\"events\",this.checked)'> share my country's big events in the world news</label></p>";
     if(thing.muted.length) html += "<p>Muted nations: "+ thing.muted.map(function(msg){ return wNation(msg, "nation") +" <a class='small' href='javascript:wMute(\"" + msg + "\",false)'>(unmute)</a>"; }).join(", ") + "</p>";
     html += "<p><button onclick='wSignOut()'>Sign out</button>" +(ON.me ? " <button onclick='wDeleteNation()'>Delete my nation from the world</button>" : "") +"</p>";
-  }else if(onlineOn()) html += "<p>Not signed in. Go to <a href='#world'>World home</a> to join.</p>";
+  }else return wHome();
   return html;
 }
 function wUpgrade(){
