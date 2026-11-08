@@ -887,7 +887,7 @@ function newGame(key, opts) {
     ensureMovement(g);
     if (opts.ideology && opts.ideology.dims) { setIdeology(g, opts.ideology, true); g.movement.custom = true; g.movement.factions = makeFactions(g, g.movement.ideology.dims); }
     ensureStake(g); scoreRefs(g);
-    g.leader = { job: opts.leaderJob || "", jobSet: !!opts.leaderJob, bio: "", born: g.startYear - 52, skin: 1, hair: "short", hairColor: "#3B2A1A", glasses: false, beard: false, suit: "#1F2A44", extra: "tie" };
+    g.leader = { job: opts.leaderJob || "", jobSet: !!opts.leaderJob, bio: "", born: g.startYear - 52 };
   }
   addEvent(g, "start", 1, "New government takes office in " + g.country.name,
     { leader: g.leaderName, party: playerParty(g).name, seats: govSeats(g), majority: g.constitution.majority },
@@ -4863,41 +4863,18 @@ function armsSvg(A, size) {
   if (A.motto) h += "<path d='M8,104 L92,104 L88,111 L92,117 L8,117 L12,111 Z' fill='#F4E9C8' stroke='#8A6D2B' stroke-width=1/><text x=50 y=113.5 font-size=6.5 text-anchor='middle' font-family='Georgia,serif' fill='#3A2A10'>" + esc(String(A.mottoText || "").slice(0, 34)) + "</text>";
   return h + "</svg>";
 }
-var SKINS = ["#F6D7C3", "#E8B896", "#C68A5E", "#8D5A3B", "#5A3A26"];
-var HAIRS = [["short", "Short"], ["side", "Side parting"], ["long", "Long"], ["bun", "Bun"], ["curly", "Curly"], ["bald", "Bald"], ["crop", "Buzz cut"]];
-var EXTRAS = [["none", "Nothing"], ["tie", "Tie"], ["sash", "Sash"], ["medals", "Medals"], ["scarf", "Scarf"], ["collar", "Clerical collar"]];
 var LEADER_JOBS = [["", "Career politician (no bonus)"], ["lawyer", "Lawyer (+2 legitimacy)"], ["teacher", "Teacher (students like you)"], ["soldier", "Soldier (+3 army loyalty)"], ["union", "Union organiser (unions like you)"],
   ["business", "Business owner (business likes you)"], ["doctor", "Doctor (slightly better health results)"], ["farmer", "Farmer (farmers like you)"], ["activist", "Activist (party members more enthusiastic)"],
   ["economist", "Economist (business and productivity)"], ["faith", "Faith leader (faith groups like you)"], ["journalist", "Journalist (no bonus, but great stories)"]];
+function cleanPng(s) {
+  if (typeof s == "string" && /^data:image\/png;base64,[A-Za-z0-9+\/=]+$/.test(s) && s.length < 400000) return s;
+  return "";
+}
 function portraitSvg(L, size) {
   L = L || {}; size = size || 100;
-  var skin = SKINS[L.skin === undefined ? 1 : L.skin] || SKINS[1], hc = L.hairColor || "#3B2A1A", suit = L.suit || "#1F2A44";
-  var h = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 120' width=" + size + " height=" + Math.round(size * 1.2) + " style='vertical-align:middle;background:#DCE3EC;border:1px solid #999'>";
-  if (L.hair == "long") h += "<path d='M24,48 Q22,92 34,100 L66,100 Q78,92 76,48 Z' fill='" + hc + "'/>";
-  h += "<path d='M10,120 Q12,88 50,84 Q88,88 90,120 Z' fill='" + suit + "'/>";
-  h += "<path d='M42,84 L50,100 L58,84 Z' fill='#FFFFFF'/>";
-  if (L.extra == "tie") h += "<path d='M48,88 L52,88 L54,106 L50,112 L46,106 Z' fill='#A01E2E'/>";
-  if (L.extra == "sash") h += "<path d='M20,96 L30,90 L84,118 L72,120 Z' fill='#C8A400'/>";
-  if (L.extra == "medals") h += "<circle cx=30 cy=102 r=3.5 fill='#D4AF37'/><circle cx=38 cy=103 r=3.5 fill='#C0C0C0'/><rect x=28 y=96 width=12 height=3 fill='#B22222'/>";
-  if (L.extra == "scarf") h += "<path d='M36,84 Q50,94 64,84 L66,90 Q50,100 34,90 Z' fill='#B22222'/><rect x=55 y=90 width=6 height=18 fill='#B22222'/>";
-  if (L.extra == "collar") h += "<rect x=44 y=84 width=12 height=5 fill='#FFFFFF'/>";
-  h += "<rect x=43 y=70 width=14 height=16 fill='" + skin + "'/>";
-  h += "<ellipse cx=50 cy=52 rx=22 ry=26 fill='" + skin + "'/>";
-  h += "<ellipse cx=28 cy=54 rx=3 ry=5 fill='" + skin + "'/><ellipse cx=72 cy=54 rx=3 ry=5 fill='" + skin + "'/>";
-  var hs = L.hair || "short";
-  if (hs == "short") h += "<path d='M28,46 Q28,24 50,24 Q72,24 72,46 Q66,34 50,34 Q34,34 28,46 Z' fill='" + hc + "'/>";
-  if (hs == "side") h += "<path d='M28,48 Q26,22 52,24 Q74,26 72,46 Q60,32 40,36 Q32,40 28,48 Z' fill='" + hc + "'/>";
-  if (hs == "long") h += "<path d='M26,52 Q24,22 50,22 Q76,22 74,52 Q70,34 50,32 Q30,34 26,52 Z' fill='" + hc + "'/>";
-  if (hs == "bun") h += "<circle cx=50 cy=20 r=8 fill='" + hc + "'/><path d='M28,46 Q28,24 50,24 Q72,24 72,46 Q66,32 50,31 Q34,32 28,46 Z' fill='" + hc + "'/>";
-  if (hs == "curly") for (var i = 0; i < 9; i++) h += "<circle cx=" + (30 + i * 5) + " cy=" + (30 - Math.sin(i / 8 * Math.PI) * 8) + " r=6 fill='" + hc + "'/>";
-  if (hs == "crop") h += "<path d='M29,44 Q29,26 50,26 Q71,26 71,44 Q64,34 50,33 Q36,34 29,44 Z' fill='" + hc + "' opacity=0.6/>";
-  h += "<ellipse cx=41 cy=52 rx=2.5 ry=3 fill='#222'/><ellipse cx=59 cy=52 rx=2.5 ry=3 fill='#222'/>";
-  h += "<path d='M37,46 Q41,44 45,46' stroke='" + hc + "' stroke-width=1.6 fill='none'/><path d='M55,46 Q59,44 63,46' stroke='" + hc + "' stroke-width=1.6 fill='none'/>";
-  h += "<path d='M50,54 L48,62 L52,62' stroke='#00000055' stroke-width=1.2 fill='none'/>";
-  h += "<path d='M43,68 Q50,72 57,68' stroke='#7A3B2E' stroke-width=1.8 fill='none'/>";
-  if (L.beard) h += "<path d='M30,58 Q32,80 50,80 Q68,80 70,58 Q66,72 50,74 Q34,72 30,58 Z' fill='" + hc + "'/>";
-  if (L.glasses) h += "<circle cx=41 cy=52 r=6 fill='none' stroke='#222' stroke-width=1.5/><circle cx=59 cy=52 r=6 fill='none' stroke='#222' stroke-width=1.5/><line x1=47 y1=52 x2=53 y2=52 stroke='#222' stroke-width=1.5/>";
-  return h + "</svg>";
+  var img = cleanPng(L.img);
+  if (!img) return "";
+  return "<img src='" + img + "' width=" + size + " alt='Leader' style='vertical-align:middle;border:1px solid #999;max-height:" + Math.round(size * 1.5) + "px;object-fit:cover'>";
 }
 
 </script>
@@ -6725,7 +6702,7 @@ var PAGE_HELP = {
   stakeholders: ["Unions, business, farmers, faith groups, greens, students, pensioners and the regions, and how they feel about you.", "Sign deals with them: each one gives you something and costs you something.", "Ignore a group for too long and they strike, protest or stop investing."],
   agencies: ["Permanent bodies that do one job, and the government's top priorities.", "Create agencies with their own name and budget, decide if they are independent, and pick up to 3 national priorities.", "Agencies take about a year to reach full strength. Plan ahead."],
   scorecard: ["14 outcomes from prosperity to the environment, graded A to F, plus your ideology's report card and achievements.", "Use it to see what is working and what each choice costs elsewhere.", "No ideology wins at everything. Pick what matters most to you."],
-  leader: ["You: portrait, biography, past job, political record and achievements.", "Design your portrait, write your story, pick your job before politics (once).", "Your past job gives a small bonus, like unions trusting a former union organiser."],
+  leader: ["You: picture, biography, past job, political record and achievements.", "Upload a PNG picture if you like, write your story, pick your job before politics (once).", "Your past job gives a small bonus, like unions trusting a former union organiser."],
   diplomacy: ["Your dealings with other real players.", "Mail, treaties and world organisations all live in The World (Online).", "There are no computer-run countries. Every other nation belongs to a real player."],
   profile: ["Your country's public page: symbols, story, leader, ideology and scores.", "Print it or save it as a PDF to share.", "Write a founding story on the National Identity page to fill it out."],
   dashboard: ["Your home page. The table shows the country's key numbers and how they changed since last week, last month, last year and the start of your term.", "Click any number to see its history. Click \"why?\" to see what caused a change. Read your advisers' briefing for ideas on what to do next.", "Green arrows are good, red are bad. Don't panic about one bad week; look at the trend."],
@@ -7244,16 +7221,14 @@ function achievementsHtml(g) {
 
 PAGES.leader = function () {
   var g = game;
-  if (!g.leader) g.leader = { job: "", bio: "", born: g.startYear - 52, skin: 1, hair: "short", hairColor: "#3B2A1A", glasses: false, beard: false, suit: "#1F2A44", extra: "tie" };
+  if (!g.leader) g.leader = { job: "", bio: "", born: g.startYear - 52 };
   var L = g.leader;
   var h = title("Leader Profile");
-  h += "<table class='data'><tr><td style='text-align:center;width:150px'><div id='ld_pic'>" + portraitSvg(L, 130) + "</div></td><td>";
+  h += "<table class='data'><tr><td style='text-align:center;width:150px'>" + (portraitSvg(L, 130) || "<div class='small' style='width:130px;height:150px;border:1px dashed #999;line-height:150px'>no picture</div>") + "</td><td>";
   h += "<b style='font-size:16px'>" + esc(g.leaderName) + "</b><br>" + esc(g.constitution.title) + " of " + esc(g.country.name) + "<br>Born " + L.born + " (age " + (weekYear(g) - L.born) + ")<br>Leader of " + esc(playerParty(g).name) + "<br>Before politics: " + esc(jobName(L.job)) + "<br>In power since " + weekDate(g, 1) + "</td></tr></table>";
   if (L.bio) h += "<div class='box' style='font-family:Georgia,serif'>" + esc(L.bio).replace(/\n/g, "<br>") + "</div>";
-  h += "<h2>Change your look and story</h2><table class='data'>";
-  h += "<tr><th>Skin tone</th><td>" + SKINS.map(function (s, i) { return "<label><input type='radio' name='ld_skin' value='" + i + "'" + (L.skin == i ? " checked" : "") + " onchange='ldPrev()'><span style='display:inline-block;width:18px;height:18px;background:" + s + ";border:1px solid #999'></span></label> "; }).join("") + "</td></tr>";
-  h += "<tr><th>Hair</th><td><select id='ld_hair' onchange='ldPrev()'>" + HAIRS.map(function (o) { return "<option value='" + o[0] + "'" + (L.hair == o[0] ? " selected" : "") + ">" + o[1] + "</option>"; }).join("") + "</select> colour <input type='color' id='ld_hc' value='" + esc(L.hairColor) + "' onchange='ldPrev()'></td></tr>";
-  h += "<tr><th>Extras</th><td><label><input type='checkbox' id='ld_gl'" + (L.glasses ? " checked" : "") + " onchange='ldPrev()'> glasses</label> <label><input type='checkbox' id='ld_bd'" + (L.beard ? " checked" : "") + " onchange='ldPrev()'> beard</label> &nbsp; clothes <input type='color' id='ld_suit' value='" + esc(L.suit) + "' onchange='ldPrev()'> <select id='ld_extra' onchange='ldPrev()'>" + EXTRAS.map(function (o) { return "<option value='" + o[0] + "'" + (L.extra == o[0] ? " selected" : "") + ">" + o[1] + "</option>"; }).join("") + "</select></td></tr>";
+  h += "<h2>Picture</h2><p>Upload a PNG of your leader if you want one. It's optional. <input type='file' accept='image/png' onchange='ldPic(this)'>" + (L.img ? " <button onclick='ldPicOff()'>Remove picture</button>" : "") + "</p><p class='small'>Big pictures are shrunk to 300 pixels wide. It shows on your profile and the Country Profile page.</p>";
+  h += "<h2>Your story</h2><table class='data'>";
   h += "<tr><th>Your name</th><td><input type='text' id='ld_name' value='" + esc(g.leaderName) + "' size=30 maxlength=40></td></tr>";
   h += "<tr><th>Year of birth</th><td><input type='number' id='ld_born' value='" + L.born + "' min=" + (g.startYear - 90) + " max=" + (g.startYear - 18) + " style='width:70px'></td></tr>";
   h += "<tr><th>Job before politics</th><td><select id='ld_job'" + (L.jobSet ? " disabled title='You can only choose this once'" : "") + ">" + LEADER_JOBS.map(function (o) { return "<option value='" + o[0] + "'" + (L.job == o[0] ? " selected" : "") + ">" + o[1] + "</option>"; }).join("") + "</select>" + (L.jobSet ? " <span class='small'>(set for good)</span>" : " <span class='small'>You can only pick this once.</span>") + "</td></tr>";
@@ -7264,15 +7239,30 @@ PAGES.leader = function () {
   return h;
 };
 function jobName(id) { for (var i = 0; i < LEADER_JOBS.length; i++) if (LEADER_JOBS[i][0] == id) return LEADER_JOBS[i][1].replace(/ \(.*\)$/, ""); return "Career politician"; }
-function ldRead() {
-  var L = copy(game.leader), r = document.querySelector("input[name=ld_skin]:checked");
-  if (r) L.skin = parseInt(r.value);
-  L.hair = $("ld_hair").value; L.hairColor = $("ld_hc").value; L.glasses = $("ld_gl").checked; L.beard = $("ld_bd").checked; L.suit = $("ld_suit").value; L.extra = $("ld_extra").value;
-  return L;
+function ldPic(inp) {
+  var f = inp.files[0];
+  if (!f) return;
+  if (f.type != "image/png") { alert("Please pick a PNG picture."); return; }
+  var rd = new FileReader();
+  rd.onload = function () {
+    var im = new Image();
+    im.onload = function () {
+      var w = im.width, hh = im.height;
+      if (w > 300) { hh = Math.round(hh * 300 / w); w = 300; }
+      var cv = document.createElement("canvas"); cv.width = w; cv.height = hh;
+      cv.getContext("2d").drawImage(im, 0, 0, w, hh);
+      var url = cv.toDataURL("image/png");
+      if (!cleanPng(url)) { alert("That picture is too big. Try a smaller one."); return; }
+      game.leader.img = url; autosave(); route();
+    };
+    im.onerror = function () { alert("Couldn't read that picture."); };
+    im.src = rd.result;
+  };
+  rd.readAsDataURL(f);
 }
-function ldPrev() { $("ld_pic").innerHTML = portraitSvg(ldRead(), 130); }
+function ldPicOff() { delete game.leader.img; autosave(); route(); }
 function ldSave() {
-  var g = game, L = ldRead();
+  var g = game, L = copy(g.leader);
   L.bio = $("ld_bio").value.slice(0, 3000); L.born = clamp(parseInt($("ld_born").value) || L.born, g.startYear - 90, g.startYear - 18);
   if (!g.leader.jobSet && $("ld_job").value) { L.job = $("ld_job").value; L.jobSet = true; }
   var nm = $("ld_name").value.trim();
