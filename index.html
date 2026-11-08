@@ -7502,7 +7502,7 @@ function nationRow(g){
     gov_type: String(g.constitution.govType || "").slice(0,60), capital: String(ctry.capital || "").slice(0, 60), motto: String(ctry.motto || "").slice(0,120),
     currency: String(ctry.currency || "").slice(0, 30) +" (" + String(ctry.symbol || "").slice(0,6) + ")",
     about: String(ctry.profileText || ctry.story || "").slice(0,2000),
-   flag: { colors: cleanFlag(ctry.flag) || [], vertical: !!ctry.flagVertical },
+   flag: ON.flagSmall && ON.flagFrom == ctry.flagImg && !ON.noFlagImg ? { colors: cleanFlag(ctry.flag) || [], vertical: !!ctry.flagVertical, img: ON.flagSmall } : { colors: cleanFlag(ctry.flag) || [], vertical: !!ctry.flagVertical },
     arms: ctry.arms ? cleanArms(ctry.arms) : null,
     scores: scores.map(function(str){ return { n: str.name, s: Math.round(str.score) }; }),
     population: +pop.toFixed(2), gdp_pc: Math.round(g.econ.gdp * 1000 / pop), growth: +(html.growth || 0).toFixed(4), inflation:+(html.infl || 0).toFixed(4),
@@ -7519,14 +7519,40 @@ function cleanArms(arm){
 }
 function remoteFlag(nat,ww, html){
   var fnc = nat.flag && nat.flag.colors ? cleanFlag(nat.flag.colors) : null;
-  return flagHtml({ flag: fnc || ["#999999"], flagVertical: !!(nat.flag && nat.flag.vertical) }, ww,html);
+  var pic = nat.flag && typeof nat.flag.img == "string" && nat.flag.img.length < 12000 ? cleanFlagImg(nat.flag.img) : "";
+  return flagHtml({ flagImg: pic, flag: fnc || ["#999999"], flagVertical: !!(nat.flag && nat.flag.vertical) }, ww,html);
 }
 function remoteArms(nat, size){ var arm = cleanArms(nat.arms); if(!arm) return ""; return armsSvg(arm, size); }
 
+function makeFlagSmall(src){
+  if(!cleanFlagImg(src)){ ON.flagSmall = null; ON.flagFrom = null; return Promise.resolve(); }
+  if(ON.flagFrom == src && ON.flagSmall) return Promise.resolve();
+  return new Promise(function(ok){
+    var im = new Image();
+    im.onload = function(){
+      try {
+        var cv = document.createElement("canvas"); cv.width = 90; cv.height = 60;
+        var ctx = cv.getContext("2d"); ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, 90, 60); ctx.drawImage(im, 0, 0, 90, 60);
+        var q = 0.85, url = cv.toDataURL("image/jpeg", q);
+        while(url.length > 9000 && q > 0.3){ q -= 0.15; url = cv.toDataURL("image/jpeg", q); }
+        if(url.length <= 9000 && cleanFlagImg(url)){ ON.flagSmall = url; ON.flagFrom = src; } else { ON.flagSmall = null; ON.flagFrom = null; }
+      } catch(e){ ON.flagSmall = null; }
+      ok();
+    };
+    im.onerror = function(){ ON.flagSmall = null; ok(); };
+    im.src = src;
+  });
+}
 function publishNation(quiet){
  if(!ON.sb || !ON.user || !game) return Promise.resolve();
   ON.lastPub = Date.now();
-  return sbData(ON.sb.from("nations").upsert(nationRow(game), { onConflict: "id" }).select().single()).then(function(row){
+  return makeFlagSmall(game.country.flagImg).then(function(){
+    return sbData(ON.sb.from("nations").upsert(nationRow(game), { onConflict: "id" }).select().single()).then(null, function(err){
+      if(!ON.flagSmall || ON.noFlagImg || !/check|constraint|23514/i.test(String(err && (err.code + " " + err.message)))) throw err;
+      ON.noFlagImg = true;
+      return sbData(ON.sb.from("nations").upsert(nationRow(game), { onConflict: "id" }).select().single());
+    });
+  }).then(function(row){
     var first = !ON.me;
     ON.me = row; wcClear("nations");
     if(first) return onlineSyncLinks();
