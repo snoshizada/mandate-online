@@ -4817,7 +4817,7 @@ function armsSvg(A, size) {
   A = A || {}; size = size || 100;
   var img = cleanPng(A.img);
   if (!img) return "";
-  return "<img src='" + img + "' width=" + size + " alt='Coat of arms' style='vertical-align:middle;max-height:" + Math.round(size * 1.5) + "px;object-fit:contain'>";
+  return "<img src='" + img + "' width=" + size + " height=" + size + " alt='Coat of arms' style='vertical-align:middle;object-fit:contain'>";
 }
 function pngShrink(f, maxW, cb) {
   if (!f) return;
@@ -4850,7 +4850,7 @@ function portraitSvg(L, size) {
   L = L || {}; size = size || 100;
   var img = cleanPng(L.img);
   if (!img) return "";
-  return "<img src='" + img + "' width=" + size + " alt='Leader' style='vertical-align:middle;border:1px solid #999;max-height:" + Math.round(size * 1.5) + "px;object-fit:cover'>";
+  return "<img src='" + img + "' width=" + size + " height=" + Math.round(size * 1.25) + " alt='Leader' style='vertical-align:middle;border:1px solid #999;object-fit:cover;object-position:top'>";
 }
 
 </script>
@@ -4944,12 +4944,18 @@ function newsPicName(type) {
   for (var k in NEWS_PICS) if (NEWS_PICS[k].indexOf(type) >= 0) return k;
   return "general";
 }
-function picSlot(src, w, hh, fallback, style) {
-  var err = fallback ? "if(!this.dataset.f){this.dataset.f=1;this.src=\"" + fallback + "\"}else{this.style.display=\"none\"}" : "this.style.display=\"none\"";
-  return "<img src='" + src + "' width=" + w + (hh ? " height=" + hh : "") + " alt='' onerror='" + err + "' style='object-fit:cover;border:1px solid #bbb;" + (style || "") + "'>";
+function picSlot(names, w, hh, style) {
+  var list = [];
+  for (var i = 0; i < names.length; i++) { list.push(names[i] + ".jpg"); list.push(names[i] + ".jpeg"); list.push(names[i] + ".png"); list.push(names[i] + ".webp"); }
+  return "<span class='picslot' style='display:inline-block;width:" + w + "px;height:" + hh + "px;overflow:hidden;border:1px solid #bbb;background:#eee;" + (style || "") + "'><img src='" + list[0] + "' data-l='" + list.join("|") + "' data-i='0' alt='' onerror='picNext(this)' style='width:100%;height:100%;object-fit:cover;display:block;max-width:none'></span>";
 }
-function newsPic(a, w, hh, style) { return picSlot("images/news/" + newsPicName(a.type) + ".jpg", w, hh, "images/news/general.jpg", style); }
-function ministryPic(id, w, hh, style) { return picSlot("images/ministry/" + id + ".jpg", w, hh, "", style); }
+function picNext(img) {
+  var L = img.getAttribute("data-l").split("|"), i = parseInt(img.getAttribute("data-i")) + 1;
+  if (i >= L.length) { img.parentNode.style.display = "none"; return; }
+  img.setAttribute("data-i", i); img.src = L[i];
+}
+function newsPic(a, w, hh, style) { return picSlot(["images/news/" + newsPicName(a.type), "images/news/general"], w, hh, style); }
+function ministryPic(id, w, hh, style) { return picSlot(["images/ministry/" + id], w, hh, style); }
 var INDICATORS = [
   { key: "gdp", name: "GDP", fmt: function (v) { return money(game, v); }, why: "gdp" },
   { key: "growth", name: "Real growth", fmt: function (v) { return pct(v); }, why: "gdp" },
