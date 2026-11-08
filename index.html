@@ -111,7 +111,7 @@ button:disabled { color: #999; cursor: default; }
 .seatbar { height: 22px; border: 1px solid #555; display: flex; margin: 4px 0; }
 .seatbar div { height: 22px; color: #fff; font-size: 10px; text-align: center; line-height: 22px; overflow: hidden; }
 .bar { display: inline-block; height: 9px; background: #17345B; vertical-align: middle; }
-.article { border-bottom: 1px solid #ccc; padding: 4px 0 6px 0; }
+.article { border-bottom: 1px solid #ccc; padding: 4px 0 6px 0; overflow: hidden; }
 .article .hl { font-family: Georgia, serif; font-size: 14px; font-weight: bold; }
 .outletname { font-size: 10px; text-transform: uppercase; color: #555; letter-spacing: 1px; }
 canvas.chart { border: 1px solid #AAA; background: #fff; }
@@ -4927,6 +4927,29 @@ var PAGE_TITLES = {
   scorecard: "National Scorecard", leader: "Leader Profile", diplomacy: "Diplomacy and Alliances", profile: "Country Profile", world: "The World Online"
 };
 var draft = null;
+var NEWS_PICS = {
+  economy: ["gdp", "inflation", "jobs", "rate", "world", "creditShock", "energyShock"],
+  election: ["election", "poll", "campaign", "referendum"],
+  politics: ["billPass", "billFail", "coalition", "confidence", "appointment", "pressResponse", "pledge", "pledgeKept", "pledgeBroken", "ideology", "split", "challenge", "manifesto"],
+  laws: ["lawInForce", "lawReview", "lawEarly", "lawExpires"],
+  opinion: ["editorial", "voices"],
+  health: ["waiting", "healthEmergency"],
+  protest: ["protest", "strike", "riot"],
+  disaster: ["disaster"],
+  war: ["war", "warReport", "border", "peace"],
+  world: ["treaty", "offer", "org", "summit"],
+  scandal: ["scandal"]
+};
+function newsPicName(type) {
+  for (var k in NEWS_PICS) if (NEWS_PICS[k].indexOf(type) >= 0) return k;
+  return "general";
+}
+function picSlot(src, w, hh, fallback, style) {
+  var err = fallback ? "if(!this.dataset.f){this.dataset.f=1;this.src=\"" + fallback + "\"}else{this.style.display=\"none\"}" : "this.style.display=\"none\"";
+  return "<img src='" + src + "' width=" + w + (hh ? " height=" + hh : "") + " alt='' onerror='" + err + "' style='object-fit:cover;border:1px solid #bbb;" + (style || "") + "'>";
+}
+function newsPic(a, w, hh, style) { return picSlot("images/news/" + newsPicName(a.type) + ".jpg", w, hh, "images/news/general.jpg", style); }
+function ministryPic(id, w, hh, style) { return picSlot("images/ministry/" + id + ".jpg", w, hh, "", style); }
 var INDICATORS = [
   { key: "gdp", name: "GDP", fmt: function (v) { return money(game, v); }, why: "gdp" },
   { key: "growth", name: "Real growth", fmt: function (v) { return pct(v); }, why: "gdp" },
@@ -5052,13 +5075,13 @@ PAGES.cabinet = function (arg) {
       h += "<tr class='small'><td>" + esc(ministryName(m.ministry)) + "</td><td colspan=6><i>Merged into " + esc(ministryName(m.mergedInto)) + "</i>" + (line ? " (budget " + money(g, line) + ")" : "") + "</td><td><a href='javascript:doSplit(\"" + m.ministry + "\")'>Split off</a></td></tr>";
       continue;
     }
-    h += "<tr><td>" + esc(ministryName(m.ministry)) + (m.load ? " <span class='small'>(+" + m.load + " merged)</span>" : "") + "</td><td>" + esc(m.name) + "</td><td>" + esc(findParty(g, m.party).name) + "</td><td class='num'>" + Math.round(m.competence * 100) + "</td><td class='num'>" + pct(clamp(m.approval, 0, 1), 0) + "</td><td class='num'>" + (line ? money(g, line) : "-") + "</td><td>" + weekDate(g, m.since) + "</td>";
+    h += "<tr><td>" + ministryPic(m.ministry, 48, 32, "float:left;margin-right:6px") + esc(ministryName(m.ministry)) + (m.load ? " <span class='small'>(+" + m.load + " merged)</span>" : "") + "</td><td>" + esc(m.name) + "</td><td>" + esc(findParty(g, m.party).name) + "</td><td class='num'>" + Math.round(m.competence * 100) + "</td><td class='num'>" + pct(clamp(m.approval, 0, 1), 0) + "</td><td class='num'>" + (line ? money(g, line) : "-") + "</td><td>" + weekDate(g, m.since) + "</td>";
     h += "<td class='small'><a href='#cabinet/" + m.ministry + "'>Replace</a> | <a href='javascript:doRename(\"" + m.ministry + "\")'>Rename</a> | <a href='javascript:doMerge(\"" + m.ministry + "\")'>Merge</a></td></tr>";
   }
   h += "</table><p class='small'>Merging a ministry saves some admin money, but one minister doing two jobs is less effective. Renaming is free.</p>";
   if (arg) {
     var m = minister(g, arg);
-    h += "<h2>Replace the Minister for " + ministryName(arg) + "</h2>";
+    h += "<h2>Replace the Minister for " + ministryName(arg) + "</h2>" + ministryPic(arg, 200, 120, "float:right;margin:0 0 8px 12px");
     h += "<p>Current: <b>" + esc(m.name) + "</b> (" + esc(findParty(g, m.party).name) + ", competence " + Math.round(m.competence * 100) + ").</p>";
     h += "<table class='data'><tr><th>Candidate</th><th>Party</th><th class='num'>Competence</th><th>Effect</th><th></th></tr>";
     var cands = candidates(g, arg);
@@ -6585,7 +6608,7 @@ PAGES.news = function (arg) {
   if (!arts.length) h += "<p>No stories match.</p>";
   for (var i = 0; i < arts.length; i++) {
     var a = arts[i];
-    h += "<div class='article'><span class='outletname'>" + outletName(a.outlet) + " &middot; " + a.date + (a.kind == "editorial" ? " &middot; OPINION" : "") + (a.answered ? " &middot; you replied" : "") + "</span><br><span class='hl'><a href='#article/" + a.id + "'>" + esc(a.headline) + "</a></span><br><span class='small'>" + esc((a.standfirst ? a.standfirst + " " : "") + a.body.replace(/\n\n/g, " ").slice(0, 150)) + "...</span></div>";
+    h += "<div class='article'>" + newsPic(a, 80, 55, "float:left;margin:2px 8px 2px 0") + "<span class='outletname'>" + outletName(a.outlet) + " &middot; " + a.date + (a.kind == "editorial" ? " &middot; OPINION" : "") + (a.answered ? " &middot; you replied" : "") + "</span><br><span class='hl'><a href='#article/" + a.id + "'>" + esc(a.headline) + "</a></span><br><span class='small'>" + esc((a.standfirst ? a.standfirst + " " : "") + a.body.replace(/\n\n/g, " ").slice(0, 150)) + "...</span></div>";
   }
   h += "</td><td valign=top>";
   h += pledgePanel(g);
@@ -6642,6 +6665,7 @@ PAGES.article = function (id) {
   if (!o) o = { id: a.outlet, name: outletName(a.outlet), type: "Party newspaper", lean: 50, sensational: 0, reliability: "Partisan" };
   var h = "<div class='outletname'>" + o.name + " &middot; " + o.type + " &middot; " + a.date + (a.kind == "editorial" ? " &middot; OPINION" : "") + "</div>";
   h += "<h1>" + esc(a.headline) + "</h1>";
+  h += newsPic(a, 320, 200, "float:right;margin:0 0 8px 12px");
   if (a.standfirst) h += "<p><i>" + esc(a.standfirst) + "</i></p>";
   if (a.byline) h += "<p class='small'>By " + esc(a.byline) + "</p>";
   var paras = String(a.body).split("\n\n");
