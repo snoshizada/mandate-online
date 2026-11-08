@@ -47,15 +47,15 @@ PAGES.world = function(arg){
   var html = title("The World Online");
  html += wTabs(tab== "nation" ? "nations" : (tab == "org" ? "orgs" : (tab =="thread" ? "forum" : tab)));
   if(wFlash){ html += "<div class='box' style='background:#E8F4E8'>" +esc(wFlash) +"</div>"; wFlash = ""; }
-  if(tab== "account") return html+ wAccount();
   if(!onlineOn()){
     html += "<h2>Not connected yet</h2><p>The online world lets you publish your nation, see other players' countries, send them messages, sign treaties that really change your economy, found world organisations together, and post in the world news and forum.</p>";
-    html += "<p>This copy of the game is not linked to an online world. Whoever runs this copy adds the link in <b>js/config.js</b>, or you can paste it on the <a href='#world/account'>Account</a> tab.</p>";
+    html += "<p>The online world isn't switched on in this copy of the game yet.</p><p class='small'>If you run this site: put your Supabase Project URL and publishable key in <b>js/config.js</b> and upload it.</p>";
     return html + "<p>Everything else in the game works offline as before.</p>";
  }
   if(!ON.ready){ onlineStart(wcRedraw); return html + "<p><i>Connecting to the online world...</i></p>"; }
   if(ON.err){ html += "<div class='box' style='background:#FCE8E8'>" + esc(ON.err) + " <a href='javascript:ON.err=\"\";wcClear();wcRedraw()'>(try again)</a></div>"; }
   if(!ON.sb) return html;
+  if(tab== "account") return html+ wAccount();
   if(ON.ban) html += "<div class='box' style='background:#FCE8E8'><b>You are banned from posting</b>" + (ON.ban.until ? " until "+ esc(new Date(ON.ban.until).toLocaleString()) : "")+ ". Reason: " + esc(ON.ban.reason || "none given") + "</div>";
   var fnc = { "": wHome, nations: wNations, nation: wNationPage, mail: wMail, treaties: wTreaties, orgs: wOrgs, org: wOrgPage, news: wNews, forum: wForum, thread: wThread, admin: wAdmin }[tab];
   if(!fnc) fnc = wHome;
@@ -65,9 +65,10 @@ PAGES.world = function(arg){
 function wHome(){
   var html = "";
   if(!ON.user){
-    html += "<h2>Join the world</h2><p>Pick how you want to play online. A guest account is instant but lives in this browser only. An email account works on any device.</p>";
-    html += "<div class='box'><button onclick='wGuest()'><b>Play as a guest</b></button> <span class='small'>No email needed.</span></div>";
-   html += "<div class='box'><b>Email account</b><br><input type='email' id='w_email' placeholder='Email' size=28> <input type='password' id='w_pass' placeholder='Password (8+ characters)' size=22><br><button onclick='wSignIn()'>Sign in</button> <button onclick='wSignUp()'>Create account</button></div>";
+    html += "<h2>Join the world</h2><p>Just type your email. We email you a code, you type it in here and you're in. No password, and the same email works on any device.</p>";
+    html += "<div class='box'><b>Your email</b><br><input type='email' id='w_email' placeholder='you@example.com' size=30 value='" + esc(wSentTo) + "' onkeydown='if(event.key==\"Enter\")wEmailGo()'> <button onclick='wEmailGo()'>" + (wSentTo ? "Send again" : "<b>Send me a code</b>") + "</button>";
+    if(wSentTo) html += "<p>We sent a code to <b>" + esc(wSentTo) + "</b>. Type it here (or just tap the link in the email):<br><input type='text' id='w_code' size=10 maxlength=10 inputmode='numeric' autocomplete='one-time-code' onkeydown='if(event.key==\"Enter\")wCodeGo()'> <button onclick='wCodeGo()'><b>Let me in</b></button></p><p class='small'>Nothing came? Check your spam folder, wait a minute, then send again.</p>";
+    html += "</div><p class='small'>Just looking? <a href='javascript:wGuest()'>Try it as a guest</a> (your nation only lives in this browser).</p>";
     return html;
   }
   if(!ON.me){
@@ -101,15 +102,24 @@ function wHome(){
   return html;
 }
 function wGuest(){ ON.sb.auth.signInAnonymously().then(function(res){ if(res.error){ alert(errText(res.error)); return; } ON.user = res.data.user; onlineRefreshMe().then(wcRedraw); }); }
-function wSignIn(){ ON.sb.auth.signInWithPassword({ email: $("w_email").value.trim(), password: $("w_pass").value }).then(function(res){ if(res.error){ alert(errText(res.error)); return; } ON.user = res.data.user; onlineRefreshMe().then(wcRedraw); }); }
-function wSignUp(){
-  var emailTxt = $("w_email").value.trim(), passTxt = $("w_pass").value;
-  if(passTxt.length < 8){ alert("Use a password of at least 8 characters."); return; }
-  ON.sb.auth.signUp({ email: emailTxt, password: passTxt }).then(function(res){
+var wSentTo = "";
+function wEmailGo(){
+  var emailTxt = $("w_email").value.trim();
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailTxt)){ alert("That doesn't look like an email address."); return; }
+  var back = location.href.split("#")[0];
+  ON.sb.auth.signInWithOtp({ email: emailTxt, options: { shouldCreateUser: true, emailRedirectTo: /^https?:/.test(back) ? back + "#world" : undefined } }).then(function(res){
     if(res.error){ alert(errText(res.error)); return; }
-    if(!res.data.session){ alert("Check your email to confirm the account, then sign in here."); return; }
-    ON.user = res.data.user; onlineRefreshMe().then(wcRedraw);
- });
+    wSentTo = emailTxt; wcRedraw();
+    var cd = $("w_code"); if(cd) cd.focus();
+  });
+}
+function wCodeGo(){
+  var code = $("w_code").value.replace(/\s/g, "");
+  if(!code){ alert("Type the code from the email."); return; }
+  ON.sb.auth.verifyOtp({ email: wSentTo, token: code, type: "email" }).then(function(res){
+    if(res.error){ alert(/expired|invalid/i.test(res.error.message) ? "That code is wrong or too old. Send a new one." : errText(res.error)); return; }
+    ON.user = res.data.user; wSentTo = ""; onlineRefreshMe().then(wcRedraw);
+  });
 }
 function wSync(){ onlineSyncLinks().then(function(){ wFlash = "Checked your treaties and organisations."; wcRedraw(); },function(err){ alert(errText(err)); }); }
 
@@ -384,40 +394,28 @@ function wThreadDel(id){ if(!confirm("Delete the whole topic?")) return; wAct(ON
 function wPin(id, pin, lock){ wAct(ON.sb.rpc("admin_thread", { thread: id, set_pinned: pin, set_locked: lock }), "Done.", "thread,forum"); }
 
 function wAccount(){
-  var cfg = onlineCfg(), html = "";
+  var html = "";
   if(ON.user){
     var anon = ON.user.is_anonymous || !ON.user.email;
     html += "<h2>Your account</h2><table class='data'><tr><th>Signed in as</th><td>"+ (anon ? "Guest (this browser only)" : esc(ON.user.email))+ "</td></tr><tr><th>Player ID</th><td><code>" + esc(ON.user.id) + "</code></td></tr>" + (ON.admin ? "<tr><th>Role</th><td>Moderator</td></tr>" : "") + "</table>";
-    if(anon) html += "<div class='box'><b>Keep this account forever</b><br>Add an email and password so you can sign in on other devices and never lose your nation.<br><input type='email' id='wa_email' placeholder='Email' size=28> <input type='password' id='wa_pass' placeholder='Password (8+ characters)' size=22> <button onclick='wUpgrade()'>Save</button></div>";
+    if(anon) html += "<div class='box'><b>Keep this account forever</b><br>Add your email so you can sign in on other devices and never lose your nation.<br><input type='email' id='wa_email' placeholder='you@example.com' size=30> <button onclick='wUpgrade()'>Save</button></div>";
     var thing = onlineOpts();
    html += "<h3>Options</h3><p><label><input type='checkbox'" +(thing.auto ? " checked" : "") +" onchange='wOpt(\"auto\",this.checked)'> publish my nation automatically after each turn</label><br><label><input type='checkbox'" + (thing.events ? " checked" : "") + " onchange='wOpt(\"events\",this.checked)'> share my country's big events in the world news</label></p>";
     if(thing.muted.length) html += "<p>Muted nations: "+ thing.muted.map(function(msg){ return wNation(msg, "nation") +" <a class='small' href='javascript:wMute(\"" + msg + "\",false)'>(unmute)</a>"; }).join(", ") + "</p>";
     html += "<p><button onclick='wSignOut()'>Sign out</button>" +(ON.me ? " <button onclick='wDeleteNation()'>Delete my nation from the world</button>" : "") +"</p>";
-  }else if(onlineOn()) html += "<p>Not signed in. Go to <a href='#world'>World home</a> to join.</p>";
-  html += "<h2>Connection</h2>";
-  var own = false; try { own = !!JSON.parse(localStorage.getItem("ngs_online") || "{}").url; } catch(err){ }
-  if(SUPABASE_URL && !own) html += "<p>This copy of the game is linked to <b>" + esc(cfg.url) +"</b>.</p>";
- html += "<p class='small'>Only change this if you run your own online world (see SUPABASE-SETUP.md). The values are saved in this browser.</p><table class='data'><tr><th>Project URL</th><td><input type='text' id='wc_url' size=50 value='"+ esc(own ? cfg.url : "") + "' placeholder='https://xxxx.supabase.co'></td></tr><tr><th>Publishable (anon) key</th><td><input type='text' id='wc_key' size=50 value='" + esc(own ? cfg.key : "") +"'></td></tr></table>";
-  html += "<p><button onclick='wConnSave()'>Save and connect</button>"+ (own ? " <button onclick='wConnClear()'>Forget these</button>" : "") + "</p>";
+  }else return wHome();
   return html;
 }
 function wUpgrade(){
-  var emailTxt = $("wa_email").value.trim(), passTxt = $("wa_pass").value;
-  if(passTxt.length < 8){ alert("Use a password of at least 8 characters."); return; }
- ON.sb.auth.updateUser({ email: emailTxt,password: passTxt }).then(function(res){ if(res.error) alert(errText(res.error)); else{ ON.user = res.data.user; wFlash = "Saved. If the server asks for email confirmation, check your inbox."; wcRedraw(); } });
+  var emailTxt = $("wa_email").value.trim();
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailTxt)){ alert("That doesn't look like an email address."); return; }
+ ON.sb.auth.updateUser({ email: emailTxt }).then(function(res){ if(res.error) alert(errText(res.error)); else{ ON.user = res.data.user; wFlash = "Nearly done: open the email we just sent and tap the link to confirm it."; wcRedraw(); } });
 }
 function wSignOut(){ ON.sb.auth.signOut().then(function(){ ON.user = null; ON.me = null; ON.admin = false; ON.unread = ON.todo = 0; wcClear(); drawWorldBadge(); go("world"); }); }
 function wDeleteNation(){
   if(!confirm("Delete your nation from the online world? Your messages, treaties, posts and organisations go with it. Your game itself stays.")) return;
   sbData(ON.sb.from("nations").delete().eq("id", myId())).then(function(){ ON.me = null; if(game) delete game.online; if(typeof lawsRefresh == "function") lawsRefresh(); autosave(); wcClear(); wFlash = "Your nation was removed from the world."; go("world"); }, function(err){ alert(errText(err)); });
 }
-function wConnSave(){
-  var uu = $("wc_url").value.trim(), kk = $("wc_key").value.trim();
-  if(uu && !/^https:\/\/[a-z0-9.-]+$/i.test(uu.replace(/\/+$/, ""))){ alert("The URL should look like https://abcdefgh.supabase.co"); return; }
-  try { localStorage.setItem("ngs_online",JSON.stringify({ url: uu, key: kk })); } catch(err){ }
-  location.reload();
-}
-function wConnClear(){ try { localStorage.removeItem("ngs_online"); } catch(err){ } location.reload(); }
 
 function wAdmin(){
   if(!ON.admin) return "<p>Moderators only.</p>";
