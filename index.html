@@ -6282,7 +6282,8 @@ PAGES.settings = function () {
       if (s) h += "<button onclick='if(confirm(\"Load this save? Unsaved progress will be lost (the autosave is kept).\"))loadSlot(\"ngs_slot_" + n + "\")'>Load</button> <button onclick='deleteSlot(" + n + ")'>Delete</button>";
       h += "</td></tr>";
     }
-    h += "</table><p class='small'>The game also autosaves after every turn. Saves live in this browser only - use Export to keep a copy.</p>";
+    h += "</table><p class='small'>The game also autosaves after every turn. Save slots live in this browser only - use Export or the cloud save to keep a copy.</p>";
+    if (typeof cloudSettingsHtml == "function") h += cloudSettingsHtml();
     h += "<h2>Export / import</h2><p><button onclick='exportSave()'>Export current game to a file</button> &nbsp; Import: <input type='file' accept='.json' onchange='importSave(this)'></p>";
     h += "<h2>Reproduce the last turn</h2><p>Re-runs the last week from the saved state, commands and random seed, and checks the result is identical. <button onclick='replayCheck()'>Run replay check</button></p>";
     if (typeof clockSettingsHtml == "function") h += clockSettingsHtml(game);
@@ -6293,6 +6294,7 @@ PAGES.settings = function () {
     if (raw) h += "<p><button onclick='loadSlot(\"ngs_autosave\")'>Load autosave</button></p>";
     for (var n = 1; n <= 10; n++) { var r = localStorage.getItem("ngs_slot_" + n); if (r) { var s = JSON.parse(r); h += "<p><button onclick='loadSlot(\"ngs_slot_" + n + "\")'>Load slot " + n + "</button> " + esc(s.name) + " - " + esc(s.country) + ", week " + s.week + "</p>"; } }
     h += "<p>Import: <input type='file' accept='.json' onchange='importSave(this)'></p>";
+    if (typeof cloudSettingsHtml == "function") h += cloudSettingsHtml();
   }
   h += "<h2>New game</h2><p><a href='#newgame'>Start a new game</a> (your current game stays in the autosave until you start).</p>";
   return h;
@@ -8198,7 +8200,7 @@ function wCodeGo(){
   if(!code){ alert("Type the code from the email."); return; }
   ON.sb.auth.verifyOtp({ email: wSentTo, token: code, type: "email" }).then(function(res){
     if(res.error){ alert(/expired|invalid/i.test(res.error.message) ? "That code is wrong or too old. Send a new one." : errText(res.error)); return; }
-    ON.user = res.data.user; wSentTo = ""; onlineRefreshMe().then(wcRedraw);
+    ON.user = res.data.user; wSentTo = ""; onlineRefreshMe().then(wcRedraw); CLOUD.asked = false; cloudCheck();
   });
 }
 function wSync(){ onlineSyncLinks().then(function(){ wFlash = "Checked your treaties and organisations."; wcRedraw(); },function(err){ alert(errText(err)); }); }
@@ -8491,7 +8493,7 @@ function wUpgrade(){
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailTxt)){ alert("That doesn't look like an email address."); return; }
  ON.sb.auth.updateUser({ email: emailTxt }).then(function(res){ if(res.error) alert(errText(res.error)); else{ ON.user = res.data.user; wFlash = "Nearly done: open the email we just sent and tap the link to confirm it."; wcRedraw(); } });
 }
-function wSignOut(){ ON.sb.auth.signOut().then(function(){ ON.user = null; ON.me = null; ON.admin = false; ON.unread = ON.todo = 0; wcClear(); drawWorldBadge(); go("world"); }); }
+function wSignOut(){ ON.sb.auth.signOut().then(function(){ ON.user = null; CLOUD.info = null; CLOUD.asked = false; CLOUD.msg = ""; ON.me = null; ON.admin = false; ON.unread = ON.todo = 0; wcClear(); drawWorldBadge(); go("world"); }); }
 function wDeleteNation(){
   if(!confirm("Delete your nation from the online world? Your messages, treaties, posts and organisations go with it. Your game itself stays.")) return;
   sbData(ON.sb.from("nations").delete().eq("id", myId())).then(function(){ ON.me = null; if(game) delete game.online; if(typeof lawsRefresh == "function") lawsRefresh(); autosave(); wcClear(); wFlash = "Your nation was removed from the world."; go("world"); }, function(err){ alert(errText(err)); });
@@ -8532,6 +8534,142 @@ function wBan(uid, rep){
 function wUnban(uid){ if(uid) wAct(ON.sb.from("bans").delete().eq("user_id", uid),"Ban lifted.", "bans"); }
 function wRepDone(id){ wAct(ON.sb.from("reports").update({ done: true }).eq("id",id), "", "reports"); }
 function wCleanup(){ sbData(ON.sb.rpc("admin_cleanup")).then(function(res){ alert(res); wcClear(); wcRedraw(); },function(err){ alert(errText(err)); }); }
+
+</script>
+<script>
+var CLOUD = { lastUp: 0, busy: false, dirty: false, asked: false, info: null, msg: "" };
+
+function cloudOn() {
+  if (typeof ON == "undefined") return false;
+  if (!ON.sb || !ON.user) return false;
+  return true;
+}
+function bytesToB64(bytes) {
+  var txt = "";
+  for (var i = 0; i < bytes.length; i += 8000) {
+    txt += String.fromCharCode.apply(null, bytes.subarray(i, i + 8000));
+  }
+  return btoa(txt);
+}
+function b64ToBytes(b64) {
+  var txt = atob(b64);
+  var bytes = new Uint8Array(txt.length);
+  for (var i = 0; i < txt.length; i++) bytes[i] = txt.charCodeAt(i);
+  return bytes;
+}
+function packSave(text) {
+  if (typeof CompressionStream == "undefined") return Promise.resolve("js:" + text);
+  var stream = new Blob([text]).stream().pipeThrough(new CompressionStream("gzip"));
+  return new Response(stream).arrayBuffer().then(function (buf) {
+    return "gz:" + bytesToB64(new Uint8Array(buf));
+  });
+}
+function unpackSave(data) {
+  if (data.indexOf("js:") == 0) return Promise.resolve(data.slice(3));
+  if (typeof DecompressionStream == "undefined") return Promise.reject(new Error("This browser is too old to open cloud saves."));
+  var bytes = b64ToBytes(data.slice(3));
+  var stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+  return new Response(stream).text();
+}
+function localSavedMs() {
+  try {
+    var raw = localStorage.getItem("ngs_autosave");
+    if (!raw) return 0;
+    var s = JSON.parse(raw);
+    if (s.savedMs) return s.savedMs;
+  } catch (e) { }
+  return 0;
+}
+
+function cloudSaveUp(force) {
+  if (!cloudOn() || !game) return Promise.resolve();
+  if (CLOUD.busy) { CLOUD.dirty = true; return Promise.resolve(); }
+  if (!force && Date.now() - CLOUD.lastUp < 30000) { CLOUD.dirty = true; return Promise.resolve(); }
+  CLOUD.busy = true;
+  CLOUD.dirty = false;
+  var ms = localSavedMs();
+  if (!ms) ms = Date.now();
+  var row = { country: String(game.country.name).slice(0, 80), week: game.week, saved_ms: ms };
+  return packSave(JSON.stringify(game)).then(function (data) {
+    if (data.length >= 3000000) throw new Error("Your save is too big for the cloud (over 3 MB).");
+    row.data = data;
+    return sbData(ON.sb.from("saves").upsert(row, { onConflict: "user_id" }));
+  }).then(function () {
+    CLOUD.busy = false;
+    CLOUD.lastUp = Date.now();
+    CLOUD.info = { country: row.country, week: row.week, saved_ms: row.saved_ms };
+    CLOUD.msg = "Saved to the cloud at " + new Date().toLocaleTimeString() + ".";
+  }, function (err) {
+    CLOUD.busy = false;
+    CLOUD.msg = "Cloud save failed: " + errText(err);
+  });
+}
+function cloudInfo() {
+  if (!cloudOn()) return Promise.resolve(null);
+  return sbData(ON.sb.from("saves").select("country,week,saved_ms,updated_at").eq("user_id", myId()).maybeSingle()).then(function (info) {
+    CLOUD.info = info;
+    return info;
+  });
+}
+function cloudLoad(ask) {
+  if (!cloudOn()) { alert("Sign in on The World (Online) page first."); return; }
+  sbData(ON.sb.from("saves").select("data").eq("user_id", myId()).maybeSingle()).then(function (row) {
+    if (!row) { alert("There is no cloud save on this account yet."); return; }
+    return unpackSave(row.data).then(function (text) {
+      var sv = JSON.parse(text);
+      if (sv.version != GAME_VERSION) {
+        if (!confirm("The cloud save was made with version " + sv.version + " (this is " + GAME_VERSION + "). It may not work properly. Load anyway?")) return;
+      }
+      if (ask && !confirm("Load " + sv.country.name + " (week " + sv.week + ") from the cloud? The game open on this device will be replaced.")) return;
+      game = sv;
+      lastSaved = game.week;
+      autosave();
+      CLOUD.msg = "Loaded your game from the cloud.";
+      go("dashboard");
+    });
+  }).then(null, function (err) { alert("Could not load the cloud save: " + errText(err)); });
+}
+function cloudCheck() {
+  if (!cloudOn() || CLOUD.asked) return;
+  CLOUD.asked = true;
+  cloudInfo().then(function (info) {
+    var mine = localSavedMs();
+    if (!info) {
+      if (game) cloudSaveUp(true);
+      return;
+    }
+    if (info.saved_ms > mine + 5000) {
+      var here = "There is no game on this device.";
+      if (game) here = "This device has " + game.country.name + ", week " + game.week + ".";
+      var when = new Date(Number(info.saved_ms)).toLocaleString();
+      if (confirm("Your account has a newer saved game: " + info.country + ", week " + info.week + " (saved " + when + ").\n\n" + here + "\n\nLoad the saved game from your account?")) cloudLoad(false);
+    } else if (game && mine > info.saved_ms + 5000) {
+      cloudSaveUp(true);
+    }
+  }, function () { });
+}
+function cloudAfterTurn() {
+  if (!cloudOn()) return;
+  cloudSaveUp(false);
+}
+function cloudSettingsHtml() {
+  var h = "<h2>Cloud save</h2>";
+  if (typeof onlineOn != "function" || !onlineOn()) return h + "<p class='small'>Cloud saves need the online world, which isn't set up on this copy of the game.</p>";
+  if (!cloudOn()) return h + "<p>Sign in on <a href='#world'>The World (Online)</a> with your email and your game is saved to your account. Then sign in with the same email on your phone or laptop to carry on where you left off.</p>";
+  h += "<p>Your game is saved to your account automatically after each turn (at most every 30 seconds), so you can carry on from another device by signing in with the same email.</p>";
+  if (ON.user.is_anonymous) h += "<p class='bad'>You are signed in as a guest. A guest account only works on this device: add an email on the World Account page to use your save on other devices.</p>";
+  var info = CLOUD.info;
+  if (info) h += "<p>In the cloud: <b>" + esc(info.country) + "</b>, week " + info.week + " (saved " + esc(new Date(Number(info.saved_ms)).toLocaleString()) + ").</p>";
+  else h += "<p>Nothing in the cloud yet.</p>";
+  if (CLOUD.msg) h += "<p class='small'>" + esc(CLOUD.msg) + "</p>";
+  h += "<p>";
+  if (game) h += "<button onclick='cloudSaveUp(true).then(route)'>Save to cloud now</button> ";
+  h += "<button onclick='cloudLoad(true)'>Load from cloud</button></p>";
+  return h;
+}
+document.addEventListener("visibilitychange", function () {
+  if (document.visibilityState == "hidden" && CLOUD.dirty) cloudSaveUp(true);
+});
 
 </script>
 <script>
@@ -8703,11 +8841,12 @@ function advance(n) {
     if (game.gameOver) break;
   }
   if (typeof onlineAfterTurn == "function") onlineAfterTurn();
+  if (typeof cloudAfterTurn == "function") cloudAfterTurn();
   go("dashboard");
 }
 function autosave() {
   try {
-    localStorage.setItem("ngs_autosave", JSON.stringify({ name: "Autosave", saved: new Date().toString(), week: game.week, country: game.country.name, game: game }));
+    localStorage.setItem("ngs_autosave", JSON.stringify({ name: "Autosave", saved: new Date().toString(), savedMs: Date.now(), week: game.week, country: game.country.name, game: game }));
     lastSaved = game.week;
   } catch (e) { $("savestatus").innerHTML = "<b>Autosave failed (storage full?)</b>"; }
 }
@@ -8791,7 +8930,7 @@ window.onload = function () {
     if (!game || !game.clock || game.clock.mode == "off" || typeof catchUp != "function") return;
     var w = game.week; catchUp(); if (game.week != w) go("dashboard");
   }, 60000);
-  if (typeof onlineStart == "function" && onlineOn()) onlineStart(function () { drawWorldBadge(); if (location.hash.indexOf("#world") == 0) route(); });
+  if (typeof onlineStart == "function" && onlineOn()) onlineStart(function () { drawWorldBadge(); if (location.hash.indexOf("#world") == 0) route(); if (typeof cloudCheck == "function") cloudCheck(); });
   setInterval(function () { if (typeof onlineTick == "function") onlineTick(); }, 120000);
 };
 document.onkeydown = function (e) {
