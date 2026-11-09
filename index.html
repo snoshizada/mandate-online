@@ -359,8 +359,14 @@ var OUTLETS = [
   { id: "flash", name: "The Daily Flash", type: "Tabloid", lean: 60, sensational: 0.9, reliability: "Low" }
 ];
 var FOREIGN = [];
-var FIRST_NAMES = ["Anna", "Tomas", "Mira", "Henrik", "Leona", "Pavel", "Iris", "Johan", "Sofia", "Marek", "Elin", "Victor", "Nadia", "Oskar", "Clara", "Dmitri", "Greta", "Felix", "Hana", "Rudi", "Ines", "Karl", "Lotte", "Emil", "Vera", "Anton", "Rosa", "Bruno", "Petra", "Ivo"];
-var LAST_NAMES = ["Varga", "Lindqvist", "Moreau", "Kessler", "Novak", "Halloran", "Brandt", "Okafor", "Ferreira", "Strand", "Kowal", "Duval", "Ritter", "Amsel", "Petrov", "Holm", "Castell", "Weiss", "Marin", "Bauer", "Sorensen", "Albrecht", "Lucan", "Fenwick", "Orsini"];
+var FIRST_NAMES = ["Anna", "Tomas", "Mira", "Henrik", "Leona", "Pavel", "Iris", "Johan", "Sofia", "Marek", "Elin", "Victor", "Nadia", "Oskar", "Clara", "Dmitri", "Greta", "Felix", "Hana", "Rudi", "Ines", "Karl", "Lotte", "Emil", "Vera", "Anton", "Rosa", "Bruno", "Petra", "Ivo",
+  "Margaret", "James", "Eleanor", "David", "Fiona", "Patrick", "Claire", "Owen", "Beatrice", "Hugo", "Lucia", "Marco", "Giulia", "Paolo", "Chiara", "Luca", "Francesca", "Matteo", "Isabelle", "Pierre", "Sophie", "Andre", "Camille", "Louis",
+  "Ruth", "Samuel", "Naomi", "Daniel", "Esther", "Gabriel", "Amara", "Kwame", "Zara", "Omar", "Leila", "Yusuf", "Priya", "Arjun", "Mei", "Kenji", "Lin", "Ana", "Diego", "Carmen", "Mateo", "Ingrid", "Lars", "Astrid", "Nils", "Katya", "Boris",
+  "Agnes", "Walter", "Edith", "Harold", "Maeve", "Declan", "Siobhan", "Callum", "Morag", "Ewan", "Tessa", "Rafael", "Bianca", "Stefan", "Marta", "Jonas", "Elena", "Viktor", "Alma", "Theo", "Celeste", "Frank", "Joan", "Martin"];
+var LAST_NAMES = ["Varga", "Lindqvist", "Moreau", "Kessler", "Novak", "Halloran", "Brandt", "Okafor", "Ferreira", "Strand", "Kowal", "Duval", "Ritter", "Amsel", "Petrov", "Holm", "Castell", "Weiss", "Marin", "Bauer", "Sorensen", "Albrecht", "Lucan", "Fenwick", "Orsini",
+  "MacLeod", "Tremblay", "Gagnon", "Bouchard", "Fraser", "Campbell", "Whitfield", "Ashdown", "Pemberton", "Hartley", "Rossi", "Bianchi", "Colombo", "Ricci", "Marino", "Greco", "Bruno", "Conti", "De Luca", "Esposito", "Romano", "Galli",
+  "Lefebvre", "Girard", "Beaumont", "Fontaine", "Mercier", "Dubois", "Schmidt", "Hoffmann", "Krause", "Vogel", "Jansen", "De Vries", "Nowak", "Wojcik", "Horvath", "Szabo", "Popescu", "Ionescu", "Andersen", "Nilsson", "Berg", "Lund",
+  "O'Brien", "Byrne", "Kavanagh", "Doyle", "Mensah", "Adeyemi", "Nwosu", "Haddad", "Rahman", "Patel", "Sharma", "Nakamura", "Tanaka", "Chen", "Wong", "Silva", "Santos", "Mendes", "Navarro", "Ortega", "Delgado", "Kerr", "Munro", "Sinclair", "Blackwood", "Thornton", "Ellery", "Quinlan", "Carver"];
 var TEMPLATES = {
   A: {
     title: "Small developed parliamentary democracy",
@@ -656,6 +662,8 @@ function weekDate(g, w) {
 function weekYear(g, w) { if (w === undefined) w = g.week; return g.startYear + Math.floor((w - 1) / 52); }
 function weekOfYear(g, w) { if (w === undefined) w = g.week; return ((w - 1) % 52) + 1; }
 function pv(g, id) { var p = g.policies[id]; return p && p.active ? p.value : 0; }
+function cname(g) { return (g.country.the ? "the " : "") + g.country.name; }
+function Cname(g) { var s = cname(g); return s.charAt(0).toUpperCase() + s.slice(1); }
 function randomName(g) { return pick(g, FIRST_NAMES) + " " + pick(g, LAST_NAMES); }
 function totalPop(g) { var s = 0; for (var i = 0; i < g.regions.length; i++) s += g.regions[i].pop; return s; }
 function adults(g) { return totalPop(g) * (1 - g.pop.young); }
@@ -684,7 +692,7 @@ function newGame(key, opts) {
     name: opts.name || T.name, capital: opts.capital || T.capital,
     currency: opts.currency || T.currency, symbol: opts.symbol || T.currencySymbol,
     languages: opts.languages || T.languages, flag: cleanFlag(opts.flag) || T.flag,
-    flagVertical: !!opts.flagVertical, flagImg: cleanFlagImg(opts.flagImg), motto: opts.motto || ""
+    flagVertical: !!opts.flagVertical, flagImg: cleanFlagImg(opts.flagImg), motto: opts.motto || "", the: !!opts.the
   };
   if (opts.partyName) {
     for (var i = 0; i < T.parties.length; i++) if (T.parties[i].player) T.parties[i].name = opts.partyName;
@@ -889,7 +897,7 @@ function newGame(key, opts) {
     ensureStake(g); scoreRefs(g);
     g.leader = { job: opts.leaderJob || "", jobSet: !!opts.leaderJob, bio: "", born: g.startYear - 52 };
   }
-  addEvent(g, "start", 1, "New government takes office in " + g.country.name,
+  addEvent(g, "start", 1, "New government takes office in " + cname(g),
     { leader: g.leaderName, party: playerParty(g).name, seats: govSeats(g), majority: g.constitution.majority },
     "Start of the game.", 1);
   makeNews(g);
@@ -2124,7 +2132,7 @@ function makeTreaty(g, countryId, treaty, aidPaid) {
   if (aidPaid) { g.debtAdjust = (g.debtAdjust || 0) + aidPaid; f.relation += 5; }
   f.relation = clamp(f.relation, 0, 100);
   g.commandLog.push({ week: g.week, cmd: "treaty", country: countryId, treaty: treaty, aid: aidPaid || 0 });
-  addEvent(g, "treaty", 2, treaty == "sanctions" ? g.country.name + " imposes sanctions on " + f.name : (treaty == "lift" ? "Sanctions on " + f.name + " lifted" : g.country.name + " and " + f.name + " agree " + treatyName(treaty).toLowerCase()),
+  addEvent(g, "treaty", 2, treaty == "sanctions" ? Cname(g) + " imposes sanctions on " + f.name : (treaty == "lift" ? "Sanctions on " + f.name + " lifted" : Cname(g) + " and " + f.name + " agree " + treatyName(treaty).toLowerCase()),
     { country: f.name, treaty: treatyName(treaty), aid: aidPaid ? money(g, aidPaid) : "none" }, "Agreed by both governments.", treaty == "sanctions" ? 0 : 1);
 }
 function defence(g) {
@@ -2614,7 +2622,7 @@ function startWar(g, enemyId, weAttacked) {
   g.econ.confidence -= 0.05;
   f.relation = 0;
   f.atWar = true;
-  addEvent(g, "war", 3, weAttacked ? g.country.name + " declares war on " + f.name : f.name + " attacks " + g.country.name + "!",
+  addEvent(g, "war", 3, weAttacked ? Cname(g) + " declares war on " + f.name : f.name + " attacks " + cname(g) + "!",
     { enemy: f.name, theirMilitary: f.military, ourMilitary: Math.round(ourStrength(g)) },
     weAttacked ? "The government declared war." : f.name + " saw our weak defences (readiness " + Math.round(g.defence.readiness) + ") and attacked across the border.", weAttacked ? 0 : -1, true, null, border);
 }
@@ -2721,7 +2729,7 @@ function finishWar(g, how, terms, amount) {
   g.wars.push(rec);
   g.politics.warAfter = how == "victory" ? 0.04 : (how == "defeat" ? -0.06 : 0);
   var termText = { white: "no land or money changes hands", reparations_receive: f.name + " pays us " + amount + "bn", reparations_pay: "we pay " + f.name + " " + amount + "bn", territory: "we gain a border province" }[terms];
-  addEvent(g, "peace", 3, how == "victory" ? "Victory! War with " + f.name + " ends" : (how == "defeat" ? "Defeat: " + g.country.name + " forced to accept " + f.name + "'s terms" : "Peace treaty signed with " + f.name),
+  addEvent(g, "peace", 3, how == "victory" ? "Victory! War with " + f.name + " ends" : (how == "defeat" ? "Defeat: " + Cname(g) + " forced to accept " + f.name + "'s terms" : "Peace treaty signed with " + f.name),
     { terms: termText, ourCasualties: Math.round(w.ourCas * 1000), civilianDeaths: Math.round(w.civCas * 1000), cost: money(g, w.cost), weeks: w.weeks },
     "The war lasted " + w.weeks + " weeks.", how == "defeat" ? -1 : 1, true);
   g.war = null;
@@ -3574,7 +3582,7 @@ function govQuote(g, ev) {
   var who = m ? m.name + ", " + m.title : g.leaderName + ", " + g.constitution.title;
   if (bill && (ev.type == "lawInForce" || ev.type == "billPass")) return { who: who, text: pickNews(g, ["This law will make a real difference to people's lives.", "We said we would act, and we have.", "This is about fairness, and it's about time."]) };
   var lines = ev.valence < 0 ? ["We are taking this very seriously and we have a plan.", "These are difficult times, but we will not change course.", "Nobody is more frustrated than me. We are acting."]
-    : (ev.valence > 0 ? ["This shows our plan is working.", "We promised results and we are delivering them.", "This is good news for every family in " + g.country.name + "."]
+    : (ev.valence > 0 ? ["This shows our plan is working.", "We promised results and we are delivering them.", "This is good news for every family in " + cname(g) + "."]
       : ["We are watching the situation carefully.", "The government will set out its response shortly."]);
   return { who: who, text: pickNews(g, lines) };
 }
@@ -3674,11 +3682,19 @@ function writeArticle(g, ev, o, tone) {
   if (tone > 0.6) stand = pickNews(g, ["A boost for " + ttl + " " + me + ".", "Good news for " + me + "'s government at last.", "Ministers are celebrating."]);
   else if (tone < -0.4) stand = pickNews(g, ["A fresh blow for " + ttl + " " + me + ".", "More bad news for the " + playerParty(g).name + " government.", "Pressure is growing on " + me + "."]);
   else stand = pickNews(g, ["What it means for you.", "The details, and what happens next.", "Our reporter explains."]);
+  var desk = deskFor(ev.type);
+  head = spinHead(g, ev, o, desk, tone, head);
+  if (ev.type != "start") {
+    var sf = standfirstFor(g, o, desk, tone);
+    if (sf && randNews(g) < 0.6) stand = sf;
+  }
   var paras = [];
   var factText = [];
   var narrated = ["pledge", "pledgeKept", "pledgeBroken", "pressResponse", "lawReview", "lawEarly", "lawInForce", "billPass", "billFail", "lawExpires"].indexOf(ev.type) >= 0;
-  if (!narrated) for (var k in ev.facts) if (typeof ev.facts[k] != "object" && k != "bill") factText.push(niceKey(k) + ": " + ev.facts[k]);
-  paras.push(ev.title + ". " + ev.cause + (factText.length ? " " + pickNews(g, ["Figures show", "The numbers:", "Key facts:"]) + " " + factText.join("; ") + "." : ""));
+  if (!narrated) for (var k in ev.facts) if (typeof ev.facts[k] != "object" && k != "bill") factText.push(niceKey(k).toLowerCase() + " " + ev.facts[k]);
+  var cause = ev.cause;
+  if (ev.type == "start") cause = ttl + " " + me + " was sworn in this week at the head of a " + playerParty(g).name + " government, promising a fresh start for " + cname(g) + ".";
+  paras.push(newsDateline(g, ev) + ev.title + ". " + cause + (factText.length ? " " + pickNews(g, ["The key figures:", "The numbers at a glance:", "In figures:"]) + " " + factText.join(", ") + "." : ""));
   if (ev.type == "pledgeBroken" && ev.facts.result) paras.push("The figure on the deadline day: " + ev.facts.result + ".");
   var mem = memoryLine(g, ev);
   if (mem) paras.push(mem);
@@ -3719,6 +3735,15 @@ function writeArticle(g, ev, o, tone) {
     if (c) { var v = voxPop(g, c, ev.type); quotes.push({ who: v.who, text: v.text }); }
   }
   for (var i = 0; i < quotes.length; i++) if (quotes[i] && quotes[i].text) paras.push("“" + quotes[i].text.replace(/\.$/, ",") + "” said " + quotes[i].who + ".");
+  if (ev.severity >= 2 || o.id == "nbs") paras.push(contextLine(g, desk));
+  if (ev.type != "start" && ev.type != "pressResponse") {
+    var spin = spinLine(g, ev, o, desk, tone);
+    if (spin) paras.push(spin);
+  }
+  if (ev.severity >= 2) {
+    var wn = whatNext(g, ev, desk);
+    if (wn) paras.push(wn);
+  }
   if (o.id == "ledger") paras.push("Markets " + (ev.valence < 0 ? "reacted cautiously." : "took the news calmly.") + " The " + g.country.currency + " " + (g.econ.exch >= 100 ? "is trading above" : "is trading below") + " its level at the start of the government's term.");
   if (o.id == "flash" && nick) paras.push("Readers can tell " + nick + " what they think on our phone line.");
   if (o.id == "citizen" && ev.valence < 0) paras.push("As always, it is ordinary working families who pay the price.");
@@ -3726,7 +3751,7 @@ function writeArticle(g, ev, o, tone) {
   if (mediaStance(g, o.id) < -0.3) paras.push(pickNews(g, ["The " + ttl + "'s office did not reply to our questions. It has refused to speak to this paper since " + lastName(me) + " attacked our reporting.", "Relations between this newspaper and the government remain frosty."]));
   return {
     id: "AR-" + ev.id.slice(3) + "-" + o.id, week: ev.week, date: ev.date, outlet: o.id, headline: head, standfirst: stand,
-    body: paras.filter(function (p) { return p; }).join("\n\n"), byline: journalist(o), event: ev.id, tone: toneWord, reliability: o.reliability, type: ev.type, region: ev.region, kind: "report"
+    body: paras.filter(function (p) { return p; }).join("\n\n"), byline: deskWriter(o, deskFor(ev.type)), event: ev.id, tone: toneWord, reliability: o.reliability, type: ev.type, region: ev.region, kind: "report"
   };
 }
 function findPartyByName(g, n) { for (var i = 0; i < g.parties.length; i++) if (g.parties[i].name == n) return g.parties[i]; }
@@ -3810,7 +3835,7 @@ function pressRespond(g, articleId, choice) {
   var bad = ev ? ev.valence < 0 : a.tone == "critical";
   var statement = "", effect = "";
   if (choice == "defend") {
-    statement = pickNews(g, ["I make no apology for doing what is right for " + g.country.name + ".", "We have a plan and we are sticking to it. The results will come."]);
+    statement = pickNews(g, ["I make no apology for doing what is right for " + cname(g) + ".", "We have a plan and we are sticking to it. The results will come."]);
     if (bad && P.approval < 0.4) { P.mood -= 0.004; effect = "It sounded out of touch."; } else { P.mood += 0.003; effect = "Supporters liked it."; }
   }
   if (choice == "apologise") {
@@ -3914,6 +3939,146 @@ function pledgesWeekly(g) {
       addEvent(g, "pledgeBroken", 3, "BROKEN PROMISE: " + lastName(g.leaderName) + " fails to " + pledgeText(g, p).replace(/^to /, ""), { quote: p.quote, made: weekDate(g, p.made), result: p.end !== undefined ? (Math.round(p.end * 10) / 10) + " " + t.unit : "" }, "The deadline was " + weekDate(g, p.deadline) + ".", -1, true);
     }
   }
+}
+var NEWS_DESKS = {
+  economy: ["gdp", "inflation", "jobs", "rate", "creditShock", "energyShock", "world", "pensions", "ministry"],
+  society: ["waiting", "healthEmergency", "strike", "protest", "census", "disaster"],
+  security: ["riot", "border", "war", "warReport", "peace", "coup", "revolution"],
+  world: ["treaty", "offer", "org"],
+  laws: ["lawReview", "lawEarly", "lawExpires", "lawInForce", "billPass", "billFail"]
+};
+var DESK_JOBS = { economy: "Economics Editor", society: "Social Affairs Correspondent", security: "Defence and Security Correspondent", world: "Diplomatic Editor", laws: "Parliamentary Correspondent", politics: "Political Editor" };
+function deskFor(type) {
+  for (var k in NEWS_DESKS) {
+    if (NEWS_DESKS[k].indexOf(type) >= 0) return k;
+  }
+  return "politics";
+}
+function deskWriter(o, desk) {
+  var h = nhash(o.id + ":" + desk + ":writer");
+  var first = FIRST_NAMES[h % FIRST_NAMES.length];
+  var last = LAST_NAMES[(h >>> 9) % LAST_NAMES.length];
+  return first + " " + last + ", " + DESK_JOBS[desk];
+}
+function newsDateline(g, ev) {
+  var place = g.country.capital;
+  if (!place) place = g.country.name;
+  if (ev.region !== null && ev.region !== undefined && g.regions[ev.region]) place = g.regions[ev.region].name;
+  return String(place).toUpperCase() + " - ";
+}
+function contextLine(g, desk) {
+  var h = g.history[g.history.length - 1] || {};
+  var growth = h.growth || 0, u = h.u || 0, infl = h.infl || 0, debt = h.debtRatio || 0;
+  if (desk == "economy") {
+    var grow = "growing at " + pct(growth);
+    if (growth < 0) grow = "shrinking at " + pct(-growth);
+    return "For context: the economy is " + grow + " a year, unemployment is " + pct(u) + ", inflation is " + pct(infl) + " and government debt stands at " + pct(debt, 0) + " of GDP.";
+  }
+  if (desk == "society") {
+    var mood = "fairly calm";
+    if (g.politics.unrest > 40) mood = "tense";
+    return "The mood in the country is " + mood + ": unrest is at " + Math.round(g.politics.unrest) + " out of 100, unemployment is " + pct(u) + " and " + pct(g.politics.approval, 0) + " of people say they approve of the government.";
+  }
+  if (desk == "security") {
+    var peace = "The country is at peace.";
+    if (g.war) peace = "The country is at war.";
+    return "Army loyalty stands at " + Math.round(g.defence.loyalty) + " out of 100 and unrest at " + Math.round(g.politics.unrest) + ". " + peace;
+  }
+  if (desk == "world") {
+    var treaties = 0, orgs = 0;
+    if (g.online && g.online.links) treaties = g.online.links.length;
+    if (g.online && g.online.orgs) orgs = g.online.orgs.length;
+    return Cname(g) + " currently has " + treaties + " treaties with other nations and belongs to " + orgs + " world organisations.";
+  }
+  var s = "The government's approval rating is " + pct(g.politics.approval, 0) + ".";
+  if (g.constitution.legislature != "none") {
+    var mine = govSeats(g), all = g.constitution.seats;
+    if (mine * 2 > all) s += " Government parties hold " + mine + " of " + all + " seats, a working majority.";
+    else s += " Government parties hold " + mine + " of " + all + " seats, short of a majority, so every vote is a fight.";
+  }
+  if (electionsHeld(g) && g.politics.nextElection) {
+    var due = g.politics.nextElection;
+    if (g.politics.snapElection) due = g.politics.snapElection;
+    s += " The next election is due on " + weekDate(g, due) + ".";
+  }
+  return s;
+}
+var SPIN = {
+  nbs: {
+    good: ["Independent economists we spoke to broadly welcomed the news, though several cautioned that one set of figures does not make a trend.", "Analysts say the government will be relieved, but the real test will be whether it lasts."],
+    bad: ["Independent analysts say the government faces difficult choices, and that there is no quick or painless fix.", "Experts we spoke to were divided on how much of this is the government's fault and how much is simply bad luck."]
+  },
+  herald: {
+    good: ["This is what happens when a government trusts hard-working families and gets out of their way. Let us hope ministers have the sense to keep going.", "Sensible, steady government brings results. The doom-mongers on the left will have to find something else to complain about."],
+    bad: ["Once again it is the taxpayer, the small business owner and the decent family who are left to pick up the bill for this government's mistakes.", "The country needs order, thrift and common sense. On this evidence it is getting none of the three."],
+    society: ["Traditional values and law and order are not old-fashioned. They are the glue that holds a nation together, and this government forgets that at its peril."],
+    security: ["A nation that cannot defend its borders and keep its streets safe is not a nation at all."]
+  },
+  citizen: {
+    good: ["Working people deserve the credit here, not the politicians. The question is whether the gains will reach the families who need them most.", "It is a welcome step, but nobody living on low pay will be throwing a party just yet."],
+    bad: ["As usual, it is nurses, cleaners, carers and the young who will pay the price while the wealthy look after themselves.", "This did not have to happen. It is the result of choices made by ministers who have never had to worry about the rent."],
+    economy: ["Behind every percentage point is a family deciding whether to heat the house or put food on the table."],
+    security: ["Ordinary people never start wars or riots, but they are always the ones who suffer from them."]
+  },
+  ledger: {
+    good: ["Investors welcomed the news and business confidence is likely to improve. Firms will now be watching for stable tax policy and a light regulatory touch.", "The markets like what they see. If ministers keep spending under control, this could be the start of something."],
+    bad: ["Business leaders warned that uncertainty is the enemy of investment, and urged ministers to resist the temptation to raise taxes or add red tape.", "Bond traders will be watching closely. Any sign that the government plans to borrow its way out of trouble would be punished."],
+    society: ["Employers say disruption on this scale costs the economy millions every week."]
+  },
+  regional: {
+    good: ["People here say it is about time the capital remembered the provinces. Local councillors want to make sure their towns get a fair share.", "For once the news from the capital looks good for us. Local businesses we spoke to were cautiously hopeful."],
+    bad: ["As usual, the provinces feel it first and worst. Local leaders say the capital is out of touch with life outside the big city.", "Shopkeepers and farmers we spoke to across the region shook their heads. \"They never ask us,\" one said."]
+  },
+  flash: {
+    good: ["Even this paper has to admit it: not bad! But don't hold your breath, readers.", "So the government finally got one right. Will wonders never cease?"],
+    bad: ["You couldn't make it up! While you struggle with your bills, the bigwigs in the capital are living it up.", "Readers are FURIOUS. Our phone lines have been ringing off the hook all day."]
+  }
+};
+function spinLine(g, ev, o, desk, tone) {
+  var S = SPIN[o.id];
+  if (!S) return "";
+  var list = S.bad;
+  if (tone >= 0.1) list = S.good;
+  if (tone < 0 && S[desk] && randNews(g) < 0.6) list = S[desk];
+  return list[Math.floor(randNews(g) * list.length)];
+}
+function spinHead(g, ev, o, desk, tone, head) {
+  if (o.sensational > 0.7) return head;
+  if (randNews(g) < 0.4) return head;
+  var low = head.charAt(0).toLowerCase() + head.slice(1);
+  if (o.id == "citizen") {
+    if (tone < -0.2) return pickNews(g, ["Families hit as " + low, "Working people pay as " + low]);
+    if (tone > 0.4) return "Good news at last: " + low;
+  }
+  if (o.id == "herald") {
+    if (tone < -0.2) return pickNews(g, ["Taxpayers fume as " + low, "Fresh chaos: " + low]);
+    if (tone > 0.4) return "Common sense wins: " + low;
+  }
+  if (o.id == "ledger" && desk == "economy") {
+    if (tone < 0) return "Markets uneasy as " + low;
+    return "Investors cheer as " + low;
+  }
+  return head;
+}
+function standfirstFor(g, o, desk, tone) {
+  var me = g.leaderName, ttl = g.constitution.title;
+  var good = "", bad = "";
+  if (o.id == "nbs") { good = "The facts, the reaction and what it means for you."; bad = "What happened, why it matters and what comes next."; }
+  if (o.id == "herald") { good = "A rare piece of good news for " + ttl + " " + me + "."; bad = "Another blow for a government that has lost its way."; }
+  if (o.id == "citizen") { good = "A step forward, but working families are still waiting."; bad = "Ordinary people are paying the price again."; }
+  if (o.id == "ledger") { good = "What it means for business, jobs and your investments."; bad = "Firms and investors brace for the fallout."; }
+  if (o.id == "regional") { good = "Our reporters ask what it means for the provinces."; bad = "The view from outside the capital is bleak."; }
+  if (o.id == "flash") { good = "NOT BAD for once!"; bad = "WHAT A SHAMBLES!"; }
+  if (tone >= 0.1) return good;
+  return bad;
+}
+function whatNext(g, ev, desk) {
+  if (desk == "economy") return "The next official figures are due in the coming weeks, and ministers will be under pressure to say what they plan to do.";
+  if (desk == "laws") return "Officials say the effects will be reviewed over the next year, and opposition parties have promised to keep the pressure on.";
+  if (desk == "society") return "Campaigners say they will keep up the pressure until the government acts.";
+  if (desk == "security") return "The " + g.constitution.title + " is expected to meet security chiefs again this week.";
+  if (desk == "world") return "Diplomats say more talks are expected in the coming months.";
+  return "";
 }
 
 </script>
@@ -4438,7 +4603,7 @@ function foundOrg(g, name, type, charter) {
   if (g.orgs.length >= 4) return "You can lead at most 4 organisations.";
   var o = { id: "ORG-" + (g.orgs.length + 1) + "-" + g.week, name: String(name || orgType(type).name).slice(0, 60), type: type, charter: String(charter || "").slice(0, 1000), members: [], founded: g.week, hq: g.country.capital };
   g.orgs.push(o);
-  addEvent(g, "org", 2, g.country.name + " founds the " + o.name, { organisation: o.name, kind: orgType(type).name, headquarters: o.hq }, orgType(type).about, 1);
+  addEvent(g, "org", 2, Cname(g) + " founds the " + o.name, { organisation: o.name, kind: orgType(type).name, headquarters: o.hq }, orgType(type).about, 1);
   g.commandLog.push({ week: g.week, cmd: "org", type: type });
   return "";
 }
@@ -6055,7 +6220,7 @@ PAGES.newgame = function () {
   }
   h += "</div>";
   h += "<h2>2. Name and identity</h2><table class='data'>";
-  h += ngText("Country name", "name", 34) + ngText("Capital city", "capital", 20) + ngText("Currency name", "currency", 14) + ngText("Currency symbol", "symbol", 4);
+  h += ngText("Country name", "name", 34) + "<tr><th></th><td><label><input type='checkbox' id='ng_the'" + (S.the ? " checked" : "") + "> Say <b>the</b> before the name</label> <span class='small'>(like \"the United Kingdom\" or \"the Republic of Laurentia\")</span></td></tr>" + ngText("Capital city", "capital", 20) + ngText("Currency name", "currency", 14) + ngText("Currency symbol", "symbol", 4);
   h += ngText("Language(s)", "languages", 24) + ngText("National motto", "motto", 40) + ngText("Your name (blank = random)", "leader", 22) + ngText("Your party / movement", "party", 28);
   h += "</table>";
   h += "<h2>3. Flag</h2><table class='data'><tr><td valign=top style='width:170px;text-align:center'><div id='ng_flagprev'>" + flagHtml({ flagImg: S.flagImg, flag: S.flag, flagVertical: S.flagVertical }, 150, 100) + "</div></td><td valign=top>";
@@ -6161,6 +6326,7 @@ function ngRead() {
   for (var i = 0; i < keys.length; i++) S[keys[i]] = $("ng_" + keys[i]).value;
   for (var i = 0; i < S.flag.length; i++) if ($("ng_fc" + i)) S.flag[i] = $("ng_fc" + i).value;
   S.flagVertical = $("ng_fvert").checked;
+  if ($("ng_the")) S.the = $("ng_the").checked;
   if (S.mode == "own") for (var i = 0; i < 10; i++) if ($("ng_rn" + i)) S.regionNames[i] = $("ng_rn" + i).value;
   if ($("ng_c_executive")) readConstForm("ng_c_", S.con);
   for (var i = 0; i < S.parties.length; i++) {
@@ -6214,7 +6380,7 @@ function startNewGame() {
   var opts = {
     name: S.name.trim(), capital: S.capital.trim(), currency: S.currency.trim(), symbol: S.symbol.trim(), languages: S.languages.trim(), motto: S.motto.trim(),
     leaderName: S.leader.trim(), partyName: S.party.trim(), difficulty: S.difficulty, seed: S.seed,
-    flag: S.flag.slice(), flagVertical: S.flagVertical, flagImg: S.flagImg, constitution: copy(S.con)
+    flag: S.flag.slice(), flagVertical: S.flagVertical, flagImg: S.flagImg, constitution: copy(S.con), the: !!S.the
   };
   for (var k in opts) if (opts[k] === "") delete opts[k];
   var cu = {};
@@ -6263,7 +6429,7 @@ PAGES.identity = function () {
   h += "<br>Motto: " + (C.motto ? "<i>&ldquo;" + esc(C.motto) + "&rdquo;</i>" : "none") + "<br>Form of state: " + esc(g.constitution.govType) + "<br>Title of the leader: " + esc(g.constitution.title) + "</td></tr></table>";
   h += "<h2>Change national symbols</h2><p>Changing the name, flag or motto is a law like any other. " + (decreeMode(g) ? "You can do it by decree." : "It needs a majority in the legislature.") + " A new flag or name costs a little money (new signs, passports...) and some people won't like it.</p>";
   h += "<table class='data'>";
-  h += "<tr><th>Country name</th><td><input type='text' id='id_name' value='" + esc(C.name) + "' size=34 maxlength=60></td></tr>";
+  h += "<tr><th>Country name</th><td><input type='text' id='id_name' value='" + esc(C.name) + "' size=34 maxlength=60><br><label><input type='checkbox'" + (C.the ? " checked" : "") + " onchange='game.country.the=this.checked;autosave();route()'> Say <b>the</b> before the name</label> <span class='small'>(just grammar, changes straight away)</span></td></tr>";
   h += "<tr><th>Capital</th><td><input type='text' id='id_capital' value='" + esc(C.capital) + "' size=20 maxlength=60></td></tr>";
   h += "<tr><th>Currency name</th><td><input type='text' id='id_currency' value='" + esc(C.currency) + "' size=14 maxlength=60></td></tr>";
   h += "<tr><th>Currency symbol</th><td><input type='text' id='id_symbol' value='" + esc(C.symbol) + "' size=4 maxlength=6></td></tr>";
@@ -6687,7 +6853,6 @@ PAGES.article = function (id) {
     }
     h += "<br><span class='small'>Hover a button to see what it does. The papers will report what you say next week.</span><div id='pressres'></div></div>";
   }
-  h += "<div class='box small'>Tone: " + a.tone + ". Reliability of this paper: " + a.reliability + ". Source event: <a href='#event/" + a.event + "'>" + a.event + "</a>. Stories are written from the game's event records; papers can spin facts but not change them.</div>";
   h += "<p><a href='#news'>&laquo; Back to news</a></p>";
   return h;
 };
@@ -7021,7 +7186,7 @@ function addCommit() {
   for (var i = 0; i < mv.commitments.length; i++) if (mv.commitments[i].id == id && mv.commitments[i].status == "open") { alert("You already made that promise."); return; }
   var c = makeCommit(g, id, $("cm_p").value);
   mv.commitments.push(c);
-  addEvent(g, "pledge", 1, g.leaderName + " promises: " + commitText(c).charAt(0).toLowerCase() + commitText(c).slice(1), { promise: commitText(c), quote: "This is a promise to the people of " + g.country.name + ". Judge us on it." }, "A manifesto commitment.", 0);
+  addEvent(g, "pledge", 1, g.leaderName + " promises: " + commitText(c).charAt(0).toLowerCase() + commitText(c).slice(1), { promise: commitText(c), quote: "This is a promise to the people of " + cname(g) + ". Judge us on it." }, "A manifesto commitment.", 0);
   g.commandLog.push({ week: g.week, cmd: "commit", id: id });
   autosave(); route();
 }
@@ -7231,7 +7396,7 @@ PAGES.leader = function () {
   var L = g.leader;
   var h = title("Leader Profile");
   h += "<table class='data'><tr><td style='text-align:center;width:150px'>" + (portraitSvg(L, 130) || "<div class='small' style='width:130px;height:150px;border:1px dashed #999;line-height:150px'>no picture</div>") + "</td><td>";
-  h += "<b style='font-size:16px'>" + esc(g.leaderName) + "</b><br>" + esc(g.constitution.title) + " of " + esc(g.country.name) + "<br>Born " + L.born + " (age " + (weekYear(g) - L.born) + ")<br>Leader of " + esc(playerParty(g).name) + "<br>Before politics: " + esc(jobName(L.job)) + "<br>In power since " + weekDate(g, 1) + "</td></tr></table>";
+  h += "<b style='font-size:16px'>" + esc(g.leaderName) + "</b><br>" + esc(g.constitution.title) + " of " + esc(cname(g)) + "<br>Born " + L.born + " (age " + (weekYear(g) - L.born) + ")<br>Leader of " + esc(playerParty(g).name) + "<br>Before politics: " + esc(jobName(L.job)) + "<br>In power since " + weekDate(g, 1) + "</td></tr></table>";
   if (L.bio) h += "<div class='box' style='font-family:Georgia,serif'>" + esc(L.bio).replace(/\n/g, "<br>") + "</div>";
   h += "<h2>Picture</h2><p>Upload a PNG of your leader if you want one. It's optional. <input type='file' accept='image/png' onchange='ldPic(this)'>" + (L.img ? " <button onclick='ldPicOff()'>Remove picture</button>" : "") + "</p><p class='small'>Big pictures are shrunk to 300 pixels wide. It shows on your profile and the Country Profile page.</p>";
   h += "<h2>Your story</h2><table class='data'>";
@@ -7310,7 +7475,7 @@ function armsPic(inp) {
   pngShrink(inp.files[0], 300, function (url) {
     pngShrink(inp.files[0], 96, function (small) {
       var g = game; g.country.arms = { img: url, small: small };
-      addEvent(g, "symbols", 1, g.country.name + " unveils a new coat of arms", {}, "", 0); autosave(); route();
+      addEvent(g, "symbols", 1, Cname(g) + " unveils a new coat of arms", {}, "", 0); autosave(); route();
     });
   });
 }
@@ -7502,7 +7667,7 @@ function nationRow(g){
     gov_type: String(g.constitution.govType || "").slice(0,60), capital: String(ctry.capital || "").slice(0, 60), motto: String(ctry.motto || "").slice(0,120),
     currency: String(ctry.currency || "").slice(0, 30) +" (" + String(ctry.symbol || "").slice(0,6) + ")",
     about: String(ctry.profileText || ctry.story || "").slice(0,2000),
-   flag: ON.flagSmall && ON.flagFrom == ctry.flagImg && !ON.noFlagImg ? { colors: cleanFlag(ctry.flag) || [], vertical: !!ctry.flagVertical, img: ON.flagSmall } : { colors: cleanFlag(ctry.flag) || [], vertical: !!ctry.flagVertical },
+   flag: flagForWorld(ctry),
     arms: ctry.arms ? cleanArms(ctry.arms) : null,
     scores: scores.map(function(str){ return { n: str.name, s: Math.round(str.score) }; }),
     population: +pop.toFixed(2), gdp_pc: Math.round(g.econ.gdp * 1000 / pop), growth: +(html.growth || 0).toFixed(4), inflation:+(html.infl || 0).toFixed(4),
@@ -7519,39 +7684,65 @@ function cleanArms(arm){
 }
 function remoteFlag(nat,ww, html){
   var fnc = nat.flag && nat.flag.colors ? cleanFlag(nat.flag.colors) : null;
-  var pic = nat.flag && typeof nat.flag.img == "string" && nat.flag.img.length < 12000 ? cleanFlagImg(nat.flag.img) : "";
+  var pic = "";
+  if(nat.flag && typeof nat.flag.img == "string" && nat.flag.img.length < 12000) pic = cleanFlagImg(nat.flag.img);
   return flagHtml({ flagImg: pic, flag: fnc || ["#999999"], flagVertical: !!(nat.flag && nat.flag.vertical) }, ww,html);
 }
 function remoteArms(nat, size){ var arm = cleanArms(nat.arms); if(!arm) return ""; return armsSvg(arm, size); }
 
+function flagForWorld(ctry){
+  var fl = { colors: cleanFlag(ctry.flag) || [], vertical: !!ctry.flagVertical };
+  if(ON.flagSmall && ON.flagFrom == ctry.flagImg && !ON.noFlagImg) fl.img = ON.flagSmall;
+  return fl;
+}
 function makeFlagSmall(src){
-  if(!cleanFlagImg(src)){ ON.flagSmall = null; ON.flagFrom = null; return Promise.resolve(); }
+  if(!cleanFlagImg(src)){
+    ON.flagSmall = null; ON.flagFrom = null;
+    return Promise.resolve();
+  }
   if(ON.flagFrom == src && ON.flagSmall) return Promise.resolve();
-  return new Promise(function(ok){
+  return new Promise(function(done){
     var im = new Image();
     im.onload = function(){
-      try {
-        var cv = document.createElement("canvas"); cv.width = 90; cv.height = 60;
-        var ctx = cv.getContext("2d"); ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, 90, 60); ctx.drawImage(im, 0, 0, 90, 60);
-        var q = 0.85, url = cv.toDataURL("image/jpeg", q);
-        while(url.length > 9000 && q > 0.3){ q -= 0.15; url = cv.toDataURL("image/jpeg", q); }
-        if(url.length <= 9000 && cleanFlagImg(url)){ ON.flagSmall = url; ON.flagFrom = src; } else { ON.flagSmall = null; ON.flagFrom = null; }
-      } catch(e){ ON.flagSmall = null; }
-      ok();
+      var cv = document.createElement("canvas");
+      cv.width = 90; cv.height = 60;
+      var ctx = cv.getContext("2d");
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(0, 0, 90, 60);
+      ctx.drawImage(im, 0, 0, 90, 60);
+      var q = 0.85;
+      var url = cv.toDataURL("image/jpeg", q);
+      while(url.length > 9000 && q > 0.3){
+        q = q - 0.15;
+        url = cv.toDataURL("image/jpeg", q);
+      }
+      if(url.length <= 9000 && cleanFlagImg(url)){
+        ON.flagSmall = url; ON.flagFrom = src;
+      } else {
+        ON.flagSmall = null; ON.flagFrom = null;
+      }
+      done();
     };
-    im.onerror = function(){ ON.flagSmall = null; ok(); };
+    im.onerror = function(){ ON.flagSmall = null; done(); };
     im.src = src;
   });
+}
+function tooBigError(err){
+  if(!err) return false;
+  var txt = String(err.code) + " " + String(err.message);
+  if(txt.indexOf("check") >= 0 || txt.indexOf("constraint") >= 0 || txt.indexOf("23514") >= 0) return true;
+  return false;
+}
+function upsertNation(){
+  return sbData(ON.sb.from("nations").upsert(nationRow(game), { onConflict: "id" }).select().single());
 }
 function publishNation(quiet){
  if(!ON.sb || !ON.user || !game) return Promise.resolve();
   ON.lastPub = Date.now();
-  return makeFlagSmall(game.country.flagImg).then(function(){
-    return sbData(ON.sb.from("nations").upsert(nationRow(game), { onConflict: "id" }).select().single()).then(null, function(err){
-      if(!ON.flagSmall || ON.noFlagImg || !/check|constraint|23514/i.test(String(err && (err.code + " " + err.message)))) throw err;
-      ON.noFlagImg = true;
-      return sbData(ON.sb.from("nations").upsert(nationRow(game), { onConflict: "id" }).select().single());
-    });
+  return makeFlagSmall(game.country.flagImg).then(upsertNation).then(null, function(err){
+    if(!ON.flagSmall || ON.noFlagImg || !tooBigError(err)) throw err;
+    ON.noFlagImg = true;
+    return upsertNation();
   }).then(function(row){
     var first = !ON.me;
     ON.me = row; wcClear("nations");
@@ -7690,7 +7881,7 @@ function wHome(){
     if(!game) return html+ "<p>Start or load a game first, then come back here to put your country on the world map.</p>";
     html += "<p>Publishing shares your country's public face with other players: name, flag, coat of arms, leader, form of government, headline numbers and scorecard. Your laws, budget and saves stay in your browser.</p>";
    html += "<table class='data'><tr><td>"+ flagHtml(game.country, 60,40) + "</td><td><b>" + esc(game.country.name) + "</b><br>" +esc(game.constitution.govType) + ", led by "+ esc(game.leaderName) + "</td></tr></table>";
-    html += "<p><button onclick='publishNation()'><b>Publish " + esc(game.country.name) + " to the world</b></button></p>";
+    html += "<p><button onclick='publishNation()'><b>Publish " + esc(cname(game)) + " to the world</b></button></p>";
     return html;
   }
   var me = ON.me;
