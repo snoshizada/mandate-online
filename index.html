@@ -130,6 +130,8 @@ canvas.chart { border: 1px solid #AAA; background: #fff; }
 }
 #flag { margin-right: 8px; }
 #menubtn { display: none; }
+.pagefoot { margin-top: 16px; padding: 6px 8px; border-top: 1px solid #BBB; background: #F4F4F4; font-size: 12px; }
+.quicklinks { background: #F4F4F4; border: 1px solid #DDD; padding: 5px 8px; font-size: 12px; }
 table.data th.grouphead, th.grouphead { background: #17345B; color: #fff; text-align: left; }
 .frontbar { display: flex; height: 22px; border: 1px solid #333; font-size: 11px; color: #fff; margin: 6px 0; }
 .frontus { background: #17345B; padding: 3px; overflow: hidden; white-space: nowrap; }
@@ -773,7 +775,9 @@ function newGame(key, opts) {
   };
   g.taxes = copy(T.taxes);
   g.taxes0 = copy(T.taxes);
-  g.compliance = key == "A" ? 0.95 : (key == "B" ? 0.84 : 0.82);
+  if (key == "A") g.compliance = 0.95;
+  else if (key == "B") g.compliance = 0.84;
+  else g.compliance = 0.82;
   if (diff == "hard") g.compliance -= 0.03;
   g.compliance0 = g.compliance;
   g.econ.wage0 = g.econ.wage;
@@ -796,13 +800,21 @@ function newGame(key, opts) {
     ],
     riskPremium: 0
   };
-  var target0 = key == "A" ? -0.015 : (key == "B" ? -0.03 : -0.045);
+  var target0;
+  if (key == "A") target0 = -0.015;
+  else if (key == "B") target0 = -0.03;
+  else target0 = -0.045;
   g.debt.riskPremium = riskPremium(g, debtRatio, target0);
   for (var i = 0; i < 3; i++) g.debt.instruments[i].rate += g.debt.riskPremium;
-  g.crime0 = key == "A" ? 55 : (key == "B" ? 80 : 70);
+  if (key == "A") g.crime0 = 55;
+  else if (key == "B") g.crime0 = 80;
+  else g.crime0 = 70;
   g.crime = g.crime0;
   g.services = {};
-  var access0 = key == "A" ? 0.97 : (key == "B" ? 0.9 : 0.86);
+  var access0;
+  if (key == "A") access0 = 0.97;
+  else if (key == "B") access0 = 0.9;
+  else access0 = 0.86;
   for (var i = 0; i < SERVICES.length; i++) {
     var s = SERVICES[i];
     var budget = g.budget.lines[s.line];
@@ -881,7 +893,10 @@ function newGame(key, opts) {
     f = calcFlows(g, true);
     g.econ.exportsBase = T.gdp - f.C - f.G - f.I + f.M;
   }
-  var target = key == "A" ? -0.015 : (key == "B" ? -0.03 : -0.045);
+  var target;
+  if (key == "A") target = -0.015;
+  else if (key == "B") target = -0.03;
+  else target = -0.045;
   if (diff == "story") target += 0.01;
   if (diff == "hard") target -= 0.01;
   g.budget.otherRevenue = Math.max(0.01 * T.gdp, target * T.gdp - (f.revTotal - f.spendTotal));
@@ -1081,7 +1096,9 @@ function calcFlows(g, initial) {
   f.spending = {};
   for (var i = 0; i < SPENDING_LINES.length; i++) {
     var L = SPENDING_LINES[i];
-    f.spending[L.name] = L.id == "welfare" ? welfareActual : (L.id == "pensions" ? pensionsPaid : b[L.id]);
+    if (L.id == "welfare") f.spending[L.name] = welfareActual;
+    else if (L.id == "pensions") f.spending[L.name] = pensionsPaid;
+    else f.spending[L.name] = b[L.id];
   }
   if (ubi) f.spending["Universal basic income"] = ubi;
   if (childBen) f.spending["Child benefit"] = childBen;
@@ -1781,7 +1798,10 @@ function costBill(g, changes) {
 function validateBill(g, bill) {
   var checks = [];
   var con = g.constitution;
-  var proc = decreeMode(g) ? "enacted by decree, no vote needed" : (con.chambers == 2 && con.upperHouse != "appointed" ? "majority in both chambers" : "simple majority in the legislature");
+  var proc;
+  if (decreeMode(g)) proc = "enacted by decree, no vote needed";
+  else if (con.chambers == 2 && con.upperHouse != "appointed") proc = "majority in both chambers";
+  else proc = "simple majority in the legislature";
   var legal = { name: "LEGAL", ok: true, msg: "The government has authority. Procedure: " + (bill.type == "amend" ? "constitutional amendment (" + con.amendmentText + ")" : proc) + "." };
   if (g.gameOver) { legal.ok = false; legal.msg = "The government is no longer in office."; }
   for (var i = 0; i < bill.changes.length; i++) {
@@ -2099,7 +2119,12 @@ function foreignAI(g) {
   maybeAttacked(g);
   if (g.foreign.length && chance(g, 0.15)) {
     var f = pick(g, g.foreign);
-    var kind = f.interest == "trade" ? "cooperation" : (f.interest == "security" ? "nonaggression" : (f.interest == "aid" ? "aid" : (f.interest == "environment" ? "climate" : "embassy")));
+    var kind;
+    if (f.interest == "trade") kind = "cooperation";
+    else if (f.interest == "security") kind = "nonaggression";
+    else if (f.interest == "aid") kind = "aid";
+    else if (f.interest == "environment") kind = "climate";
+    else kind = "embassy";
     if (f.treaties.indexOf(kind) < 0 && f.relation > 30) {
       g.offers.push({ id: "OF-" + g.week + "-" + f.id, from: f.id, treaty: kind, week: g.week, status: "open" });
       addEvent(g, "offer", 1, f.name + " proposes a " + treatyName(kind).toLowerCase(), { country: f.name, treaty: treatyName(kind) }, f.name + "'s government wants closer ties on " + f.interest + ".", 0);
@@ -2132,7 +2157,10 @@ function evaluateOffer(g, countryId, treaty) {
   var min = minister(g, "foreign");
   score += (min.competence - 0.5) * 0.15;
   if (treaty == "sanctions" || treaty == "aid" || treaty == "lift") return { result: "accept", score: score, reasons: ["This is a decision for our government alone."] };
-  var result = score >= 0.75 ? "accept" : (score >= 0.55 ? "counter" : "reject");
+  var result;
+  if (score >= 0.75) result = "accept";
+  else if (score >= 0.55) result = "counter";
+  else result = "reject";
   var counter = null;
   if (result == "counter") { counter = Math.round((0.75 - score) * 20 * 10) / 10 + 0.2; reasons.push("They would accept with a development aid payment of " + counter + "bn."); }
   return { result: result, score: score, reasons: reasons, counter: counter };
@@ -2748,7 +2776,9 @@ function finishWar(g, how, terms, amount) {
   g.wars = g.wars || [];
   var rec = { enemy: f.name, start: w.start, end: g.week, outcome: how, terms: terms, amount: amount, ourCas: w.ourCas, theirCas: w.theirCas, civCas: w.civCas, displaced: w.displaced, cost: w.cost };
   g.wars.push(rec);
-  g.politics.warAfter = how == "victory" ? 0.04 : (how == "defeat" ? -0.06 : 0);
+  if (how == "victory") g.politics.warAfter = 0.04;
+  else if (how == "defeat") g.politics.warAfter = -0.06;
+  else g.politics.warAfter = 0;
   var termText = { white: "no land or money changes hands", reparations_receive: f.name + " pays us " + amount + "bn", reparations_pay: "we pay " + f.name + " " + amount + "bn", territory: "we gain a border province" }[terms];
   addEvent(g, "peace", 3, how == "victory" ? "Victory! War with " + f.name + " ends" : (how == "defeat" ? "Defeat: " + Cname(g) + " forced to accept " + f.name + "'s terms" : "Peace treaty signed with " + f.name),
     { terms: termText, ourCasualties: Math.round(w.ourCas * 1000), civilianDeaths: Math.round(w.civCas * 1000), cost: money(g, w.cost), weeks: w.weeks },
@@ -3243,8 +3273,12 @@ function lawCheck(g, law, final) {
     var good = goal.down ? change < 0 : change > 0;
     var rel = Math.abs(before) > 1e-9 ? change / Math.abs(before) : change;
     var small = Math.abs(rel) < 0.02;
-    verdict = small ? "made little difference so far" : (good ? "is working" : "is not working");
-    valence = small ? 0 : (good ? 1 : -1);
+    if (small) verdict = "made little difference so far";
+    else if (good) verdict = "is working";
+    else verdict = "is not working";
+    if (small) valence = 0;
+    else if (good) valence = 1;
+    else valence = -1;
     res.goal = goal.name.toLowerCase();
     res.before = fmtIndicator(goal.key, before);
     res.after = fmtIndicator(goal.key, after);
@@ -3438,7 +3472,10 @@ function g2c(g, law) {
 }
 var QUINTILE_NAMES = ["the poorest 20%", "lower-income", "middle-income", "comfortable", "the richest 20%"];
 function cohortName(g, c) {
-  var age = c.age == 2 ? "pensioners" : (c.age == 0 ? "children" : "working-age people");
+  var age;
+  if (c.age == 2) age = "pensioners";
+  else if (c.age == 0) age = "children";
+  else age = "working-age people";
   var q = ["the poorest", "lower-income", "middle-income", "better-off", "the richest"][c.q];
   return q + " " + age + " in " + g.regions[c.region].name;
 }
@@ -3558,7 +3595,11 @@ function voxPop(g, c, topic) {
   var f = happy ? best : worst;
   if (f && Math.abs(f.v) > 0.01) said = factorQuote(g, f.k, f.v > 0, c);
   else said = (happy ? ["Honestly, things are fine. I can't complain.", "We're getting by. Better than some.", "I don't follow politics much, but life's OK.", "No big complaints from me."] : ["Nothing ever changes for people like me.", "Politicians all promise the same thing.", "I just want someone who listens.", "It's hard to see what they've actually done."])[seed % 4];
-  var verdict = c.approval > 0.6 ? "I'll vote for them again." : (c.approval > 0.45 ? "They're doing all right, I suppose." : (c.approval > 0.3 ? "I'm losing patience with " + lastName(g.leaderName) + "." : "They've completely forgotten about us."));
+  var verdict;
+  if (c.approval > 0.6) verdict = "I'll vote for them again.";
+  else if (c.approval > 0.45) verdict = "They're doing all right, I suppose.";
+  else if (c.approval > 0.3) verdict = "I'm losing patience with " + lastName(g.leaderName) + ".";
+  else verdict = "They've completely forgotten about us.";
   return { who: name + ", " + age + ", " + job + " from " + place, text: said + " " + verdict };
 }
 function factorQuote(g, k, good, c) {
@@ -3589,10 +3630,10 @@ function oppQuote(g, ev, tone) {
   var op = oppositionLeader(g);
   if (!op || g.constitution.partySystem == "single") return null;
   var me = lastName(g.leaderName), ttl = g.constitution.title;
-  var lines = ev.valence < 0
-    ? ["This is what happens when " + me + " puts the " + playerParty(g).name + " before the country.", "The " + ttl + " has run out of ideas and out of excuses.", "People are paying the price for " + me + "'s mistakes.", "How many more weeks like this before " + me + " admits they got it wrong?"]
-    : (ev.valence > 0 ? ["Good news, but no thanks to " + me + ". The government got lucky.", "We welcome it, but families still feel worse off than when " + me + " took office."]
-      : ["We'll be watching the " + ttl + " very closely.", "The government owes the country an explanation."]);
+  var lines;
+  if (ev.valence < 0) lines = ["This is what happens when " + me + " puts the " + playerParty(g).name + " before the country.", "The " + ttl + " has run out of ideas and out of excuses.", "People are paying the price for " + me + "'s mistakes.", "How many more weeks like this before " + me + " admits they got it wrong?"];
+  else if (ev.valence > 0) lines = ["Good news, but no thanks to " + me + ". The government got lucky.", "We welcome it, but families still feel worse off than when " + me + " took office."];
+  else lines = ["We'll be watching the " + ttl + " very closely.", "The government owes the country an explanation."];
   if (g.constitution.press == "state") return null;
   return { who: op.leader + ", leader of the " + op.name, text: pickNews(g, lines) };
 }
@@ -3602,9 +3643,10 @@ function govQuote(g, ev) {
   if (bill) { var mm = minister(g, bill.ministry); if (mm) m = { name: mm.name, title: "Minister for " + ministryName(mm.ministry) }; }
   var who = m ? m.name + ", " + m.title : g.leaderName + ", " + g.constitution.title;
   if (bill && (ev.type == "lawInForce" || ev.type == "billPass")) return { who: who, text: pickNews(g, ["This law will make a real difference to people's lives.", "We said we would act, and we have.", "This is about fairness, and it's about time."]) };
-  var lines = ev.valence < 0 ? ["We are taking this very seriously and we have a plan.", "These are difficult times, but we will not change course.", "Nobody is more frustrated than me. We are acting."]
-    : (ev.valence > 0 ? ["This shows our plan is working.", "We promised results and we are delivering them.", "This is good news for every family in " + cname(g) + "."]
-      : ["We are watching the situation carefully.", "The government will set out its response shortly."]);
+  var lines;
+  if (ev.valence < 0) lines = ["We are taking this very seriously and we have a plan.", "These are difficult times, but we will not change course.", "Nobody is more frustrated than me. We are acting."];
+  else if (ev.valence > 0) lines = ["This shows our plan is working.", "We promised results and we are delivering them.", "This is good news for every family in " + cname(g) + "."];
+  else lines = ["We are watching the situation carefully.", "The government will set out its response shortly."];
   return { who: who, text: pickNews(g, lines) };
 }
 function groupReactions(g, bill) {
@@ -3833,7 +3875,10 @@ function voicesFeature(g) {
 }
 function editorial(g) {
   var press = g.constitution.press;
-  var pool = press == "state" ? ["nbs"] : (press == "restricted" ? ["nbs", "herald", "citizen", "ledger"] : ["herald", "citizen", "ledger", "flash", "nbs"]);
+  var pool;
+  if (press == "state") pool = ["nbs"];
+  else if (press == "restricted") pool = ["nbs", "herald", "citizen", "ledger"];
+  else pool = ["herald", "citizen", "ledger", "flash", "nbs"];
   var oid = pool[(g.week >> 2) % pool.length], o = null;
   for (var i = 0; i < OUTLETS.length; i++) if (OUTLETS[i].id == oid) o = OUTLETS[i];
   var now = g.history[g.history.length - 1], then = g.history[Math.max(0, g.history.length - 13)];
@@ -5199,7 +5244,11 @@ function coalitionAction(g, pid, act, arg) {
     return "";
   }
   if (act == "promise") {
-    var id = p.social > 70 && p.econ < 50 ? "green" : (p.econ < 45 ? "welfare" : (p.econ > 58 ? "notax" : "balance"));
+    var id;
+    if (p.social > 70 && p.econ < 50) id = "green";
+    else if (p.econ < 45) id = "welfare";
+    else if (p.econ > 58) id = "notax";
+    else id = "balance";
     if (p.name.toLowerCase().indexOf("green") >= 0) id = "green";
     for (var i = 0; i < mv.commitments.length; i++) if (mv.commitments[i].id == id && mv.commitments[i].status == "open") return "That promise (" + commitText(mv.commitments[i]) + ") is already in your manifesto.";
     var c = makeCommit(g, id); c.key = "co_" + pid + "_" + g.week; c.forParty = p.name;
@@ -5461,6 +5510,7 @@ PAGES.dashboard = function () {
   for (var i = 0; i < g.bills.length; i++) if (g.bills[i].stage == "AMENDMENT WINDOW") pend.push("Bill <a href='#bill/" + g.bills[i].id + "'>" + esc(g.bills[i].title) + "</a> is open for amendments (final vote next week)");
   for (var i = 0; i < g.offers.length; i++) if (g.offers[i].status == "open") pend.push("<a href='#foreign'>Treaty offer from " + esc(countryById(g.offers[i].from).name) + "</a>");
   if (pend.length) h += "<div class='notice'><b>Pending decisions:</b><br>&bull; " + pend.join("<br>&bull; ") + "</div>";
+  h += "<p class='quicklinks'><b>Quick links:</b> <a href='#lawmaker'>Write a law</a> &middot; <a href='#treasury'>Budget</a> &middot; <a href='#parliament'>Parliament</a> &middot; <a href='#news'>News</a> &middot; <a href='#elections'>Polls and elections</a> &middot; <a href='#world'>The World</a></p>";
   h += "<h2>Key indicators</h2>";
   h += "<table class='data full'><tr><th>Indicator</th><th class='num'>Now</th><th class='num'>vs last week</th><th class='num'>vs last month</th><th class='num'>vs last year</th><th class='num'>vs start of term</th><th></th></tr>";
   var now = g.history[g.history.length - 1];
@@ -5712,7 +5762,10 @@ function checksHtml(checks) {
   var h = "";
   for (var i = 0; i < checks.length; i++) {
     var c = checks[i];
-    var cls = !c.ok ? "fail" : (c.warn ? "warn" : "ok");
+    var cls;
+    if (!c.ok) cls = "fail";
+    else if (c.warn) cls = "warn";
+    else cls = "ok";
     h += "<div class='check " + cls + "'><b>" + c.name + "</b> [" + (!c.ok ? "FAIL" : (c.warn ? "WARNING" : "OK")) + "] " + esc(c.msg) + "</div>";
   }
   return h;
@@ -6415,7 +6468,10 @@ function ngWorkOut(S) {
   for (var i = 0; i < n; i++) { regions[i].pop = Math.round(regions[i].pop / ps * popTotal * 100) / 100; avg += regions[i].pop * regions[i].income; }
   avg /= sum(regions.map(function (r) { return r.pop; }));
   for (var i = 0; i < n; i++) regions[i].income = Math.round(clamp(regions[i].income / avg, 0.3, 3) * 100) / 100;
-  var key = (hist == "crash" || hist == "decline") ? "C" : (w >= 3 ? "A" : "B");
+  var key;
+  if ((hist == "crash" || hist == "decline")) key = "C";
+  else if (w >= 3) key = "A";
+  else key = "B";
   return {
     key: key, regions: regions, gdpPerCap: Math.round(perCap * 10) / 10, debt: Math.round(debt * 100), unemp: Math.round(unemp * 1000) / 10, infl: Math.round(infl * 1000) / 10,
     old: Math.round(old * 100), young: Math.round(young * 100), importShare: imp,
@@ -6992,7 +7048,13 @@ function myLawsHtml(g) {
     var law = L[i];
     var fx = computeLawFx({ econ: g.econ, regions: g.regions, pop: g.pop, week: g.week, customLaws: [law] });
     var cost = 0; for (var k in fx.spendLines) cost += fx.spendLines[k]; for (var k in fx.revLines) cost -= fx.revLines[k];
-    var status = law.active ? (law.phase < 1 ? "Phasing in (" + Math.round(law.phase * 100) + "%)" : "In force") : (law.repealed ? "Repealed " + weekDate(g, law.repealed) : "Ended");
+    var status;
+    if (law.active) {
+      if (law.phase < 1) status = "Phasing in (" + Math.round(law.phase * 100) + "%)";
+      else status = "In force";
+    }
+    else if (law.repealed) status = "Repealed " + weekDate(g, law.repealed);
+    else status = "Ended";
     if (law.lastVerdict) status += "<br><span class='small'>Verdict: " + esc(law.lastVerdict) + "</span>";
     if (law.sunset && law.active) status += "<br><span class='small'>Ends " + weekDate(g, law.sunset) + "</span>";
     h += "<tr" + (law.active ? "" : " class='small'") + "><td><b>" + esc(law.name) + "</b>" + (law.bill ? "<br><a class='small' href='#bill/" + law.bill + "'>" + law.bill + "</a>" : "") + "</td><td class='small'>" + law.blocks.map(function (b) { return esc(blockText(g, b)); }).join("<br>") + "</td>";
@@ -7713,7 +7775,9 @@ function recordHtml(g) {
   var types = ["election", "billPass", "lawInForce", "treaty", "war", "confidence", "coalition", "referendum", "deal", "agency", "org", "summit", "split", "challenge", "manifesto", "ideology", "scandal"];
   var ev = g.events.filter(function (e) { return types.indexOf(e.type) >= 0 && e.severity >= 2; });
   var laws = g.events.filter(function (e) { return e.type == "lawInForce"; }).length, elections = g.politics.elections.length;
-  var h = "<p>Laws in force: <b>" + laws + "</b> &middot; Elections faced: <b>" + elections + "</b> &middot; Treaties: <b>" + g.foreign.reduce(function (a, f) { return a + f.treaties.length; }, 0) + "</b> &middot; Agencies: <b>" + (g.agencies || []).length + "</b></p>";
+  var treatyCount = 0;
+  if (g.online && g.online.links) treatyCount = g.online.links.length;
+  var h = "<p>Laws in force: <b>" + laws + "</b> &middot; Elections faced: <b>" + elections + "</b> &middot; Treaties: <b>" + treatyCount + "</b> &middot; Agencies: <b>" + (g.agencies || []).length + "</b></p>";
   if (!ev.length) return h + "<p><i>Nothing yet. Make history.</i></p>";
   h += "<table class='data full'>";
   for (var i = ev.length - 1; i >= 0 && i >= ev.length - 25; i--) h += "<tr><td class='small' style='white-space:nowrap'>" + ev[i].date + "</td><td>" + esc(ev[i].title) + "</td></tr>";
@@ -8719,6 +8783,10 @@ function route() {
     if (at >= 0) { var end = html.indexOf("</div>", at) + 6; html = html.slice(0, end) + extra + html.slice(end); }
     else html = extra + html;
   }
+  if (game && page != "newgame") {
+    rememberPage(page, arg);
+    html += pageFootHtml(page, arg);
+  }
   $("main").innerHTML = html;
   for (var i = 0; i < afterRender.length; i++) afterRender[i]();
   wrapWideTables();
@@ -8748,6 +8816,39 @@ function route() {
   document.body.className = document.body.className.replace(" menuopen", "");
   drawShell();
   window.scrollTo(0, 0);
+}
+var recentPages = [];
+function rememberPage(page, arg) {
+  var where = page;
+  if (arg) where = page + "/" + arg;
+  var keep = [];
+  for (var i = 0; i < recentPages.length; i++) {
+    if (recentPages[i] != where) keep.push(recentPages[i]);
+  }
+  keep.unshift(where);
+  if (keep.length > 6) keep.length = 6;
+  recentPages = keep;
+}
+function pageName(where) {
+  var bits = where.split("/");
+  var name = PAGE_TITLES[bits[0]] || bits[0];
+  if (bits[0] == "world" && bits[1]) name = "World: " + bits[1].charAt(0).toUpperCase() + bits[1].slice(1);
+  if (bits[0] == "article") name = "News story";
+  if (bits[0] == "chart") name = "Chart";
+  return name;
+}
+function pageFootHtml(page, arg) {
+  var h = "<div class='pagefoot'>";
+  h += "<a href='javascript:window.scrollTo(0,0)'>&uarr; Back to top</a>";
+  if (page != "dashboard") h += " | <a href='#dashboard'>Dashboard</a>";
+  if (!game.gameOver) h += " | <a href='javascript:advance(1)'>Advance 1 week &raquo;</a>";
+  var links = [];
+  for (var i = 1; i < recentPages.length && links.length < 4; i++) {
+    links.push("<a href='#" + recentPages[i] + "'>" + esc(pageName(recentPages[i])) + "</a>");
+  }
+  if (links.length) h += "<br><span class='small'>Recently viewed: " + links.join(" &middot; ") + "</span>";
+  h += "</div>";
+  return h;
 }
 function wrapWideTables() {
   if (window.innerWidth > 700) return;
