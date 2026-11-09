@@ -161,6 +161,7 @@ table.data th.grouphead, th.grouphead { background: #17345B; color: #fff; text-a
   button { min-height: 30px; }
   h1 { font-size: 20px; }
   .article .hl { font-size: 15px; }
+  .swipehint { font-size: 11px; color: #666; text-align: right; margin: 2px 0; }
   .tablewrap { overflow-x: auto; max-width: 100%; margin-bottom: 6px; -webkit-overflow-scrolling: touch; }
   #main table.data td, #main table.data th { padding: 4px 5px; }
   #main table.data { font-size: 12px; }
@@ -8756,11 +8757,16 @@ function wrapWideTables() {
   for (var i = 0; i < list.length; i++) {
     var t = list[i];
     if (t.parentNode.className == "tablewrap") continue;
-    if (t.parentNode.tagName == "TD" || t.parentNode.tagName == "TH") continue;
     var box = document.createElement("div");
     box.className = "tablewrap";
     t.parentNode.insertBefore(box, t);
     box.appendChild(t);
+    if (box.scrollWidth > box.clientWidth + 4) {
+      var hint = document.createElement("div");
+      hint.className = "swipehint";
+      hint.innerHTML = "Swipe the table sideways to see more &raquo;";
+      box.parentNode.insertBefore(hint, box);
+    }
   }
 }
 function toggleMenu() {
