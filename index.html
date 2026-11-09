@@ -233,20 +233,29 @@ body.theme-grey .wtabs { background: #E8E8E8; border-color: #BBBBBB; }
         <li><a href="#dashboard">National Dashboard</a></li>
         <li><a href="#cabinet">Cabinet and Ministries</a></li>
         <li><a href="#parliament">Parliament</a></li>
-        <li><a href="#law">Constitution and Law</a></li>
         <li><a href="#lawmaker"><b>Write a Law</b></a></li>
-        <li><a href="#identity">National Identity</a></li>
-        <li><a href="#profile">Country Profile</a></li>
+        <li><a href="#law">Constitution and Law</a></li>
+        <li><a href="#elections">Elections and Parties</a></li>
+      </ul>
+      <div class="navhead">ECONOMY AND PEOPLE</div>
+      <ul>
         <li><a href="#economy">Economy</a></li>
         <li><a href="#treasury">Treasury and Budget</a></li>
         <li><a href="#population">Population and Society</a></li>
         <li><a href="#services">Public Services</a></li>
         <li><a href="#agencies">Agencies and Priorities</a></li>
         <li><a href="#stakeholders">Unions, Business and Groups</a></li>
-        <li><a href="#elections">Elections and Parties</a></li>
         <li><a href="#regions">Regions</a></li>
+      </ul>
+      <div class="navhead">COUNTRY AND WORLD</div>
+      <ul>
+        <li><a href="#identity">National Identity</a></li>
+        <li><a href="#profile">Country Profile</a></li>
         <li><a href="#foreign">Foreign Affairs</a></li>
         <li><a href="#defence">Defence and Security</a></li>
+      </ul>
+      <div class="navhead">NEWS AND RECORDS</div>
+      <ul>
         <li><a href="#news">Media and News</a></li>
         <li><a href="#stats">National Statistics</a></li>
         <li><a href="#archive">Historical Archive</a></li>
@@ -3569,7 +3578,7 @@ function oppQuote(g, ev, tone) {
   if (!op || g.constitution.partySystem == "single") return null;
   var me = lastName(g.leaderName), ttl = g.constitution.title;
   var lines = ev.valence < 0
-    ? ["This is what happens when " + me + " puts " + playerParty(g).name + " before the country.", "The " + ttl + " has run out of ideas and out of excuses.", "People are paying the price for " + me + "'s mistakes.", "How many more weeks like this before " + me + " admits they got it wrong?"]
+    ? ["This is what happens when " + me + " puts the " + playerParty(g).name + " before the country.", "The " + ttl + " has run out of ideas and out of excuses.", "People are paying the price for " + me + "'s mistakes.", "How many more weeks like this before " + me + " admits they got it wrong?"]
     : (ev.valence > 0 ? ["Good news, but no thanks to " + me + ". The government got lucky.", "We welcome it, but families still feel worse off than when " + me + " took office."]
       : ["We'll be watching the " + ttl + " very closely.", "The government owes the country an explanation."]);
   if (g.constitution.press == "state") return null;
@@ -3615,7 +3624,7 @@ function groupReactions(g, bill) {
     var name = FIRST_NAMES[nhash(x.g.id + g.rng.seed) % FIRST_NAMES.length] + " " + LAST_NAMES[nhash(x.g.id + "l" + g.rng.seed) % LAST_NAMES.length];
     var text = x.s > 0 ? pickNews(g, ["This is a big step in the right direction.", "We have campaigned for this for years. Well done.", "Our members will welcome this."])
       : pickNews(g, ["This is a disaster and we will fight it.", "Nobody asked for this. It will hurt our members.", "We urge the government to think again."]);
-    return { who: name + ", " + x.g.spokes + " of " + x.g.name, text: text, s: x.s };
+    return { who: name + ", " + x.g.spokes + " of " + x.g.name, text: text, s: x.s, id: x.g.id };
   });
 }
 function mkActive(law) { var l = copy(law); l.active = true; l.phase = 1; l.since = 0; return l; }
@@ -3670,89 +3679,122 @@ function writeArticle(g, ev, o, tone) {
   var head = ev.title;
   var nick = leaderNickname(g);
   var ttl = g.constitution.title, me = g.leaderName;
-  var toneWord = tone > 0.6 ? "positive" : (tone < -0.4 ? "critical" : "neutral");
-  if (o.sensational > 0.7) {
-    if (nick && ev.valence < 0 && randNews(g) < 0.6) head = nick.toUpperCase() + " IN TROUBLE: " + head;
-    head = head.toUpperCase();
-    if (tone < -0.2) head += "!";
-    if (ev.type == "scandal") head = "SHAME OF " + (ev.facts.minister || "MINISTER").toUpperCase() + ": " + head;
-  } else if (o.id == "ledger" && ev.type == "lawInForce") head = "Business digests " + ev.title.replace(" comes into force", "");
-  else if (o.id == "regional" && ev.region !== null && ev.region !== undefined) head = g.regions[ev.region].name + ": " + head;
-  var stand = "";
-  if (tone > 0.6) stand = pickNews(g, ["A boost for " + ttl + " " + me + ".", "Good news for " + me + "'s government at last.", "Ministers are celebrating."]);
-  else if (tone < -0.4) stand = pickNews(g, ["A fresh blow for " + ttl + " " + me + ".", "More bad news for the " + playerParty(g).name + " government.", "Pressure is growing on " + me + "."]);
-  else stand = pickNews(g, ["What it means for you.", "The details, and what happens next.", "Our reporter explains."]);
+  var toneWord = "neutral";
+  if (tone > 0.6) toneWord = "positive";
+  if (tone < -0.4) toneWord = "critical";
   var desk = deskFor(ev.type);
-  head = spinHead(g, ev, o, desk, tone, head);
-  if (ev.type != "start") {
-    var sf = standfirstFor(g, o, desk, tone);
-    if (sf && randNews(g) < 0.6) stand = sf;
-  }
-  var paras = [];
-  var factText = [];
-  var narrated = ["pledge", "pledgeKept", "pledgeBroken", "pressResponse", "lawReview", "lawEarly", "lawInForce", "billPass", "billFail", "lawExpires"].indexOf(ev.type) >= 0;
-  if (!narrated) for (var k in ev.facts) if (typeof ev.facts[k] != "object" && k != "bill") factText.push(niceKey(k).toLowerCase() + " " + ev.facts[k]);
-  var cause = ev.cause;
-  if (ev.type == "start") cause = ttl + " " + me + " was sworn in this week at the head of a " + playerParty(g).name + " government, promising a fresh start for " + cname(g) + ".";
-  paras.push(newsDateline(g, ev) + ev.title + ". " + cause + (factText.length ? " " + pickNews(g, ["The key figures:", "The numbers at a glance:", "In figures:"]) + " " + factText.join(", ") + "." : ""));
-  if (ev.type == "pledgeBroken" && ev.facts.result) paras.push("The figure on the deadline day: " + ev.facts.result + ".");
-  var mem = memoryLine(g, ev);
-  if (mem) paras.push(mem);
-  var bill = ev.bill ? findBill(g, ev.bill) : null;
-  var quotes = [];
-  if (bill && (ev.type == "billPass" || ev.type == "lawInForce" || ev.type == "billFail")) {
-    var what = [];
-    for (var i = 0; i < bill.changes.length; i++) {
-      var c = bill.changes[i];
-      if (c.kind == "law") what = what.concat(c.to.blocks.map(function (b) { var t = blockText(g, b); return b.type == "measure" ? "bring in: " + t.charAt(0).toLowerCase() + t.slice(1) : t.charAt(0).toLowerCase() + t.slice(1); }));
-      else if (c.kind == "repeal") what.push("scrap the " + (findLaw(g, c.id) ? findLaw(g, c.id).name : "law"));
-      else if (c.kind == "tax" || c.kind == "spend" || c.kind == "policy") what.push(c.name.toLowerCase() + " " + (c.to > c.from ? "up" : "down") + " from " + roundN(c.from) + " to " + roundN(c.to) + (c.unit ? " " + c.unit : ""));
-      else if (c.kind == "amend") what.push("change the constitution (" + c.name.toLowerCase() + ")");
-      else if (c.kind == "identity") what.push("change the " + c.name.toLowerCase());
+  var B = {};
+  B.g = g; B.ev = ev; B.o = o; B.tone = tone; B.desk = desk; B.nick = nick; B.ttl = ttl; B.me = me;
+  B.title = ev.title;
+  B.low = lowerStart(g, ev.title);
+  B.cause = ev.cause;
+  if (ev.type == "start") B.cause = ttl + " " + me + " was sworn in this week at the head of a " + playerParty(g).name + " government, promising a fresh start for " + cname(g) + ".";
+  B.facts = [];
+  var narrated = ["pledge", "pledgeKept", "pledgeBroken", "pressResponse", "lawReview", "lawEarly", "lawInForce", "billPass", "billFail", "lawExpires"];
+  if (narrated.indexOf(ev.type) < 0) {
+    for (var k in ev.facts) {
+      if (typeof ev.facts[k] != "object" && k != "bill") B.facts.push(niceKey(k).toLowerCase() + " " + ev.facts[k]);
     }
-    if (what.length) paras.push((ev.type == "billFail" ? "It would have " : "It will ") + what.slice(0, 6).join(", ") + (what.length > 6 ? " and more" : "") + ".");
-    var reacts = groupReactions(g, bill);
-    for (var i = 0; i < reacts.length; i++) quotes.push(reacts[i]);
+  }
+  B.extra = [];
+  if (ev.type == "pledgeBroken" && ev.facts.result) B.extra.push("The figure on the deadline day: " + ev.facts.result + ".");
+  if ((ev.type == "lawReview" || ev.type == "lawEarly") && ev.facts.before) B.extra.push("When the " + ev.facts.law + " started, the figure was " + ev.facts.before + ". It is now " + ev.facts.after + ".");
+  B.mem = memoryLine(g, ev);
+  B.billText = [];
+  B.groups = [];
+  var bill = null;
+  if (ev.bill) bill = findBill(g, ev.bill);
+  if (bill && (ev.type == "billPass" || ev.type == "lawInForce" || ev.type == "billFail")) {
+    var what = billWhat(g, bill);
+    if (what.length) {
+      var w = "It will ";
+      if (ev.type == "billFail") w = "It would have ";
+      var more = "";
+      if (what.length > 6) more = " and more";
+      B.billText.push(w + what.slice(0, 6).join(", ") + more + ".");
+    }
+    B.groups = groupReactions(g, bill);
     var last = bill.votes[bill.votes.length - 1];
     if (last && last.parties) {
-      var rebels = last.parties.filter(function (p) { return p.no > 0 && findPartyByName(g, p.name) && findPartyByName(g, p.name).inGov; });
-      if (rebels.length) paras.push("There was a rebellion: " + rebels.map(function (r) { return r.no + " members of the " + r.name; }).join(" and ") + " voted against their own government.");
+      var rebels = [];
+      for (var i = 0; i < last.parties.length; i++) {
+        var lp = last.parties[i], party = findPartyByName(g, lp.name);
+        if (lp.no > 0 && party && party.inGov) rebels.push(lp.no + " members of the " + lp.name);
+      }
+      if (rebels.length) B.billText.push("There was a rebellion: " + rebels.join(" and ") + " voted against their own government.");
     }
-    if (bill.decree) paras.push("There was no vote. The " + ttl + " signed it into law personally.");
+    if (bill.decree) B.billText.push("There was no vote. The " + ttl + " signed it into law personally.");
   }
-  if (ev.type == "lawReview" || ev.type == "lawEarly") {
-    paras.push(ev.facts.before ? "When the " + ev.facts.law + " started, the figure was " + ev.facts.before + ". It is now " + ev.facts.after + "." : "");
+  B.statement = null;
+  if (ev.type == "pressResponse" && ev.facts.statement) B.statement = { who: me + ", " + ttl, text: ev.facts.statement };
+  if (ev.type == "pledge" || ev.type == "pledgeKept" || ev.type == "pledgeBroken") {
+    var when = "";
+    if (ev.type != "pledge") when = " (" + (ev.facts.made || "earlier") + ")";
+    B.statement = { who: me + ", " + ttl + when, text: ev.facts.quote || "" };
   }
-  if (ev.type == "pressResponse" && ev.facts.statement) quotes.push({ who: me + ", " + ttl, text: ev.facts.statement });
-  if (ev.type == "pledge" || ev.type == "pledgeKept" || ev.type == "pledgeBroken") quotes.push({ who: me + ", " + ttl + (ev.type == "pledge" ? "" : " (" + (ev.facts.made || "earlier") + ")"), text: ev.facts.quote || "" });
-  if (ev.severity >= 2 && ["start", "pressResponse", "pledge"].indexOf(ev.type) < 0) {
-    quotes.push(govQuote(g, ev));
-    var oq = oppQuote(g, ev, tone);
-    if (oq) quotes.push(oq);
+  B.gov = null; B.opp = null; B.vox = null;
+  if (ev.severity >= 2 && ev.type != "start" && ev.type != "pressResponse" && ev.type != "pledge") {
+    B.gov = govQuote(g, ev);
+    B.opp = oppQuote(g, ev, tone);
   }
   if (ev.severity >= 2 && o.id != "ledger" && randNews(g) < 0.7) {
     var c = pickCohortFor(g, ev);
-    if (c) { var v = voxPop(g, c, ev.type); quotes.push({ who: v.who, text: v.text }); }
+    if (c) B.vox = voxPop(g, c, ev.type);
   }
-  for (var i = 0; i < quotes.length; i++) if (quotes[i] && quotes[i].text) paras.push("“" + quotes[i].text.replace(/\.$/, ",") + "” said " + quotes[i].who + ".");
-  if (ev.severity >= 2 || o.id == "nbs") paras.push(contextLine(g, desk));
-  if (ev.type != "start" && ev.type != "pressResponse") {
-    var spin = spinLine(g, ev, o, desk, tone);
-    if (spin) paras.push(spin);
-  }
-  if (ev.severity >= 2) {
-    var wn = whatNext(g, ev, desk);
-    if (wn) paras.push(wn);
-  }
-  if (o.id == "ledger") paras.push("Markets " + (ev.valence < 0 ? "reacted cautiously." : "took the news calmly.") + " The " + g.country.currency + " " + (g.econ.exch >= 100 ? "is trading above" : "is trading below") + " its level at the start of the government's term.");
-  if (o.id == "flash" && nick) paras.push("Readers can tell " + nick + " what they think on our phone line.");
-  if (o.id == "citizen" && ev.valence < 0) paras.push("As always, it is ordinary working families who pay the price.");
-  if (o.id == "herald" && ev.valence < 0) paras.push("Taxpayers deserve better.");
-  if (mediaStance(g, o.id) < -0.3) paras.push(pickNews(g, ["The " + ttl + "'s office did not reply to our questions. It has refused to speak to this paper since " + lastName(me) + " attacked our reporting.", "Relations between this newspaper and the government remain frosty."]));
+  B.context = "";
+  if (ev.severity >= 2 || o.id == "nbs" || o.id == "ledger") B.context = contextLine(g, desk);
+  B.spin = "";
+  if (ev.type != "start" && ev.type != "pressResponse") B.spin = spinLine(g, ev, o, desk, tone);
+  B.next = "";
+  if (ev.severity >= 2) B.next = whatNext(g, ev, desk);
+  B.frosty = "";
+  if (mediaStance(g, o.id) < -0.3) B.frosty = pickNews(g, ["The " + ttl + "'s office did not reply to our questions. It has refused to speak to this paper since " + lastName(me) + " attacked our reporting.", "Relations between this newspaper and the government remain frosty."]);
+  var paras = [];
+  if (o.id == "herald") paras = heraldStory(B);
+  else if (o.id == "citizen") paras = citizenStory(B);
+  else if (o.id == "ledger") paras = ledgerStory(B);
+  else if (o.id == "regional") paras = regionalStory(B);
+  else if (o.id == "flash") paras = flashStory(B);
+  else paras = nbsStory(B);
+  if (B.frosty) paras.push(B.frosty);
+  head = paperHeadline(B);
+  var stand = paperStandfirst(B);
+  var clean = [];
+  for (var i = 0; i < paras.length; i++) if (paras[i]) clean.push(paras[i]);
   return {
     id: "AR-" + ev.id.slice(3) + "-" + o.id, week: ev.week, date: ev.date, outlet: o.id, headline: head, standfirst: stand,
-    body: paras.filter(function (p) { return p; }).join("\n\n"), byline: deskWriter(o, deskFor(ev.type)), event: ev.id, tone: toneWord, reliability: o.reliability, type: ev.type, region: ev.region, kind: "report"
+    body: clean.join("\n\n"), byline: deskWriter(o, desk), event: ev.id, tone: toneWord, reliability: o.reliability, type: ev.type, region: ev.region, kind: "report"
   };
+}
+function billWhat(g, bill) {
+  var what = [];
+  for (var i = 0; i < bill.changes.length; i++) {
+    var c = bill.changes[i];
+    if (c.kind == "law") {
+      for (var j = 0; j < c.to.blocks.length; j++) {
+        var b = c.to.blocks[j];
+        var t = blockText(g, b);
+        t = t.charAt(0).toLowerCase() + t.slice(1);
+        if (b.type == "measure") t = "bring in: " + t;
+        what.push(t);
+      }
+    }
+    else if (c.kind == "repeal") {
+      var lw = findLaw(g, c.id);
+      if (lw) what.push("scrap the " + lw.name);
+      else what.push("scrap the law");
+    }
+    else if (c.kind == "tax" || c.kind == "spend" || c.kind == "policy") {
+      var dir = "down";
+      if (c.to > c.from) dir = "up";
+      var unit = "";
+      if (c.unit) unit = " " + c.unit;
+      what.push(c.name.toLowerCase() + " " + dir + " from " + roundN(c.from) + " to " + roundN(c.to) + unit);
+    }
+    else if (c.kind == "amend") what.push("change the constitution (" + c.name.toLowerCase() + ")");
+    else if (c.kind == "identity") what.push("change the " + c.name.toLowerCase());
+  }
+  return what;
 }
 function findPartyByName(g, n) { for (var i = 0; i < g.parties.length; i++) if (g.parties[i].name == n) return g.parties[i]; }
 function pickCohortFor(g, ev) {
@@ -4042,24 +4084,6 @@ function spinLine(g, ev, o, desk, tone) {
   if (tone < 0 && S[desk] && randNews(g) < 0.6) list = S[desk];
   return list[Math.floor(randNews(g) * list.length)];
 }
-function spinHead(g, ev, o, desk, tone, head) {
-  if (o.sensational > 0.7) return head;
-  if (randNews(g) < 0.4) return head;
-  var low = head.charAt(0).toLowerCase() + head.slice(1);
-  if (o.id == "citizen") {
-    if (tone < -0.2) return pickNews(g, ["Families hit as " + low, "Working people pay as " + low]);
-    if (tone > 0.4) return "Good news at last: " + low;
-  }
-  if (o.id == "herald") {
-    if (tone < -0.2) return pickNews(g, ["Taxpayers fume as " + low, "Fresh chaos: " + low]);
-    if (tone > 0.4) return "Common sense wins: " + low;
-  }
-  if (o.id == "ledger" && desk == "economy") {
-    if (tone < 0) return "Markets uneasy as " + low;
-    return "Investors cheer as " + low;
-  }
-  return head;
-}
 function standfirstFor(g, o, desk, tone) {
   var me = g.leaderName, ttl = g.constitution.title;
   var good = "", bad = "";
@@ -4079,6 +4103,237 @@ function whatNext(g, ev, desk) {
   if (desk == "security") return "The " + g.constitution.title + " is expected to meet security chiefs again this week.";
   if (desk == "world") return "Diplomats say more talks are expected in the coming months.";
   return "";
+}
+
+function lowerStart(g, txt) {
+  txt = String(txt);
+  var keep = [g.leaderName, g.country.name, g.country.capital, g.constitution.title];
+  for (var i = 0; i < g.parties.length; i++) keep.push(g.parties[i].name);
+  for (var i = 0; i < g.regions.length; i++) keep.push(g.regions[i].name);
+  for (var i = 0; i < keep.length; i++) {
+    if (keep[i] && txt.indexOf(keep[i]) == 0) return txt;
+  }
+  var first = txt.split(" ")[0];
+  if (first.length > 1 && first.charAt(1) == first.charAt(1).toUpperCase() && first.charAt(1) != first.charAt(1).toLowerCase()) return txt;
+  if (["I", "Victory!", "Defeat:"].indexOf(first) >= 0) return txt;
+  return txt.charAt(0).toLowerCase() + txt.slice(1);
+}
+function sayNbs(q) {
+  if (!q || !q.text) return "";
+  return "“" + q.text.replace(/\.$/, ",") + "” said " + q.who + ".";
+}
+function sayHerald(q) {
+  if (!q || !q.text) return "";
+  return q.who + ", said: “" + q.text + "”";
+}
+function sayCitizen(q) {
+  if (!q || !q.text) return "";
+  return "“" + q.text.replace(/\.$/, ",") + "” " + q.who + ", told The Citizen.";
+}
+function sayLedger(q) {
+  if (!q || !q.text) return "";
+  return "In a statement, " + q.who + ", said: “" + q.text + "”";
+}
+function sayFlash(g, q, angry) {
+  if (!q || !q.text) return "";
+  var verb = pickNews(g, ["gushed", "beamed", "said"]);
+  if (angry) verb = pickNews(g, ["blasted", "fumed", "raged", "stormed"]);
+  return "“" + q.text.toUpperCase().charAt(0) + q.text.slice(1).replace(/\.$/, "!") + "” " + verb + " " + q.who.split(",")[0] + ".";
+}
+function groupsFor(B, side) {
+  var out = [];
+  var right = ["business", "taxpayers", "church", "police", "farmers"];
+  var left = ["unions", "poverty", "students", "greens", "liberties", "doctors"];
+  for (var i = 0; i < B.groups.length; i++) {
+    var gr = B.groups[i];
+    if (side == "all") out.push(gr);
+    if (side == "right" && right.indexOf(gr.id) >= 0) out.push(gr);
+    if (side == "left" && left.indexOf(gr.id) >= 0) out.push(gr);
+    if (side == "money" && (gr.id == "business" || gr.id == "taxpayers")) out.push(gr);
+  }
+  return out;
+}
+function factsLine(B, start) {
+  if (!B.facts.length) return "";
+  return start + " " + B.facts.join(", ") + ".";
+}
+function nbsStory(B) {
+  var P = [];
+  P.push(newsDateline(B.g, B.ev) + B.title + ". " + B.cause);
+  P.push(factsLine(B, pickNews(B.g, ["The key figures:", "In figures:"])));
+  P = P.concat(B.extra);
+  P.push(B.mem);
+  P = P.concat(B.billText);
+  if (B.statement) P.push(sayNbs(B.statement));
+  if (B.gov) P.push("The government defended its record. " + sayNbs(B.gov));
+  if (B.opp) P.push("The opposition was not convinced. " + sayNbs(B.opp));
+  var gr = groupsFor(B, "all");
+  for (var i = 0; i < gr.length; i++) P.push(sayNbs(gr[i]));
+  if (B.context) {
+    var why = B.context.replace("For context: ", "");
+    P.push("Why does this matter? " + why.charAt(0).toUpperCase() + why.slice(1));
+  }
+  P.push(B.spin);
+  if (B.vox) P.push("Members of the public we spoke to had mixed feelings. " + sayNbs(B.vox));
+  P.push(B.next);
+  return P;
+}
+function heraldStory(B) {
+  var P = [];
+  var lead = "";
+  if (B.tone < -0.1) lead = pickNews(B.g, ["Another embarrassment for " + B.ttl + " " + B.me + " tonight. " + B.title + ".", "Questions are being asked tonight. " + B.title + "."]);
+  else if (B.tone > 0.3) lead = pickNews(B.g, ["A rare bright spot for the country this week. " + B.title + ".", "Some welcome news at last. " + B.title + "."]);
+  else lead = B.title + ".";
+  P.push(newsDateline(B.g, B.ev) + lead + " " + B.cause);
+  P.push(B.spin);
+  P.push(B.mem);
+  P = P.concat(B.billText);
+  P = P.concat(B.extra);
+  if (B.statement) P.push(sayHerald(B.statement));
+  if (B.tone < 0) {
+    if (B.opp) P.push(sayHerald(B.opp));
+    if (B.gov) P.push("Ministers insisted they had a grip on the situation. " + sayHerald(B.gov));
+  } else {
+    if (B.gov) P.push(sayHerald(B.gov));
+  }
+  var gr = groupsFor(B, "right");
+  for (var i = 0; i < gr.length; i++) P.push(sayHerald(gr[i]));
+  if (B.vox) P.push("Herald reader " + B.vox.who + ", said: “" + B.vox.text + "”");
+  P.push(factsLine(B, "The facts behind the headlines:"));
+  P.push(B.context);
+  if (B.ev.valence < 0) P.push("Taxpayers deserve better.");
+  return P;
+}
+function citizenStory(B) {
+  var P = [];
+  if (B.vox) {
+    var news = "a rare bit of hope";
+    if (B.tone < 0) news = "yet another worry";
+    P.push("For " + B.vox.who + ", this week's headline is " + news + ": " + B.low + ". “" + B.vox.text + "”");
+    P.push(newsDateline(B.g, B.ev) + B.cause);
+  } else {
+    P.push(newsDateline(B.g, B.ev) + B.title + ". " + B.cause);
+  }
+  P.push(B.spin);
+  P = P.concat(B.billText);
+  P = P.concat(B.extra);
+  var gr = groupsFor(B, "left");
+  for (var i = 0; i < gr.length; i++) P.push(sayCitizen(gr[i]));
+  if (B.statement) P.push(sayCitizen(B.statement));
+  if (B.opp && B.tone < 0) P.push(sayCitizen(B.opp));
+  if (B.gov) P.push("Responding, the government said: “" + B.gov.text + "” Few families will be reassured.");
+  P.push(B.mem);
+  P.push(B.context);
+  P.push(factsLine(B, "The numbers:"));
+  if (B.ev.valence < 0) P.push("As always, it is ordinary working families who pay the price.");
+  return P;
+}
+function ledgerStory(B) {
+  var P = [];
+  P.push(newsDateline(B.g, B.ev) + "Announced on " + B.ev.date + ": " + B.low + ". " + B.cause);
+  P.push(factsLine(B, "At a glance:"));
+  var mood = "took the news calmly";
+  if (B.ev.valence < 0) mood = "reacted cautiously";
+  var cur = "is trading below";
+  if (B.g.econ.exch >= 100) cur = "is trading above";
+  P.push("Markets " + mood + ". The " + B.g.country.currency + " " + cur + " its level at the start of the government's term.");
+  P = P.concat(B.billText);
+  P = P.concat(B.extra);
+  if (B.gov) P.push(sayLedger(B.gov));
+  var gr = groupsFor(B, "money");
+  for (var i = 0; i < gr.length; i++) P.push(sayLedger(gr[i]));
+  if (B.statement) P.push(sayLedger(B.statement));
+  P.push(contextLine(B.g, "economy"));
+  if (B.spin) P.push("What it means for business: " + B.spin);
+  P.push(B.next);
+  return P;
+}
+function regionalStory(B) {
+  var P = [];
+  var g = B.g;
+  var r = B.ev.region;
+  if (r === null || r === undefined || !g.regions[r]) r = nhash(B.ev.id) % g.regions.length;
+  var reg = g.regions[r];
+  P.push(String(reg.name).toUpperCase() + " - People across " + reg.name + " are reacting to the latest news from the capital: " + B.low + ". " + B.cause);
+  if (B.vox) P.push("“" + B.vox.text + "” said " + B.vox.who + ".");
+  var rich = "close to";
+  if (reg.income > 1.05) rich = "above";
+  if (reg.income < 0.95) rich = "below";
+  P.push("Incomes in " + reg.name + " are " + rich + " the national average (" + Math.round(reg.income * 100) + "%), and " + Math.round(reg.pop * 10) / 10 + " million people live here.");
+  P.push(B.spin);
+  P = P.concat(B.billText);
+  P = P.concat(B.extra);
+  if (B.statement) P.push(sayNbs(B.statement));
+  if (B.gov) P.push("In the capital, " + B.gov.who + " insisted: “" + B.gov.text + "”");
+  if (B.opp) P.push(sayNbs(B.opp));
+  P.push(B.mem);
+  P.push(B.next);
+  return P;
+}
+function flashStory(B) {
+  var P = [];
+  var g = B.g;
+  if (B.tone < 0) P.push(pickNews(g, ["Hard-pressed families were left reeling last night. " + B.title + ".", "It's happened AGAIN. " + B.title + ".", "Shocked readers could hardly believe it. " + B.title + "."]));
+  else P.push(pickNews(g, ["Champagne corks were popping in the capital last night. " + B.title + ".", "Well, well, well. " + B.title + "."]));
+  var bits = String(B.cause).split(". ");
+  for (var i = 0; i < bits.length && i < 3; i++) if (bits[i]) P.push(bits[i].replace(/\.$/, "") + ".");
+  if (B.facts.length) P.push("The number that matters: " + B.facts[B.facts.length - 1] + ".");
+  P = P.concat(B.billText.slice(0, 1));
+  if (B.statement) P.push(sayFlash(g, B.statement, false));
+  if (B.opp) P.push(sayFlash(g, B.opp, true));
+  if (B.vox) P.push("Furious " + B.vox.who.split(",")[0] + " told us: “" + B.vox.text + "”");
+  if (B.tone < 0) P.push("A source close to the " + B.ttl + " told the Flash: “" + pickNews(g, ["They're panicking. Nobody knows what to do.", "Heads will roll for this.", "The boss is furious. Doors are being slammed."]) + "”");
+  if (B.gov && B.tone >= 0) P.push(sayFlash(g, B.gov, false));
+  P.push(B.spin);
+  if (B.nick) P.push("Readers can tell " + B.nick + " what they think on our phone line.");
+  else P.push("What do YOU think? Call the Flash hotline now.");
+  return P;
+}
+function paperHeadline(B) {
+  var g = B.g, o = B.o, ev = B.ev, head = ev.title, tone = B.tone;
+  if (o.id == "flash") {
+    if (B.nick && ev.valence < 0 && randNews(g) < 0.6) head = B.nick.toUpperCase() + " IN TROUBLE: " + head;
+    head = head.toUpperCase();
+    if (tone < -0.2) head += "!";
+    if (ev.type == "scandal") head = "SHAME OF " + (ev.facts.minister || "MINISTER").toUpperCase() + ": " + head;
+    return head;
+  }
+  if (o.id == "ledger") {
+    if (ev.type == "lawInForce") return "Business digests " + ev.title.replace(" comes into force", "");
+    if (B.desk == "economy") {
+      if (tone < 0) return "Markets uneasy as " + B.low;
+      return "Investors cheer as " + B.low;
+    }
+    return "Business watch: " + B.low;
+  }
+  if (o.id == "regional") {
+    var r = ev.region;
+    if (r === null || r === undefined || !g.regions[r]) r = nhash(ev.id) % g.regions.length;
+    return g.regions[r].name + " reacts: " + B.low;
+  }
+  if (o.id == "citizen") {
+    if (tone < -0.2) return pickNews(g, ["Families hit as " + B.low, "Working people pay as " + B.low]);
+    if (tone > 0.4) return "Good news at last: " + B.low;
+    return head;
+  }
+  if (o.id == "herald") {
+    if (tone < -0.2) return pickNews(g, ["Taxpayers fume as " + B.low, "Fresh chaos: " + B.low]);
+    if (tone > 0.4) return "Common sense wins: " + B.low;
+    return head;
+  }
+  return head;
+}
+function paperStandfirst(B) {
+  var g = B.g, me = B.me, ttl = B.ttl;
+  if (B.ev.type == "start") {
+    if (B.o.id == "flash") return "NEW BOSS, SAME OLD PROMISES?";
+    return "A new chapter begins for " + cname(g) + ".";
+  }
+  var sf = standfirstFor(g, B.o, B.desk, B.tone);
+  if (sf) return sf;
+  if (B.tone > 0.6) return "A boost for " + ttl + " " + me + ".";
+  if (B.tone < -0.4) return "Pressure is growing on " + me + ".";
+  return "What it means for you.";
 }
 
 </script>
@@ -5091,6 +5346,7 @@ var PAGE_TITLES = {
   ideology: "Ideology and Manifesto", movement: "Party and Movement", stakeholders: "Unions, Business and Groups", agencies: "Agencies and Priorities",
   scorecard: "National Scorecard", leader: "Leader Profile", diplomacy: "Diplomacy and Alliances", profile: "Country Profile", world: "The World Online"
 };
+var PAGE_PARENT = { article: "news", event: "archive", chart: "stats", why: "stats", bill: "parliament", diplomacy: "foreign" };
 var draft = null;
 var NEWS_PICS = {
   economy: ["gdp", "inflation", "jobs", "rate", "world", "creditShock", "energyShock"],
@@ -6853,7 +7109,7 @@ PAGES.article = function (id) {
     }
     h += "<br><span class='small'>Hover a button to see what it does. The papers will report what you say next week.</span><div id='pressres'></div></div>";
   }
-  h += "<p><a href='#news'>&laquo; Back to news</a></p>";
+  h += articleNavHtml(g, a, o);
   return h;
 };
 function doPress(id, choice) {
@@ -6862,6 +7118,25 @@ function doPress(id, choice) {
   route();
   if (r && $("pressres")) $("pressres").innerHTML = esc(r.effect);
   else if (r) alert(r.effect);
+}
+function articleNavHtml(g, a, o) {
+  var pos = -1;
+  for (var i = 0; i < g.news.length; i++) if (g.news[i].id == a.id) pos = i;
+  var h = "<table width='100%' style='margin-top:10px'><tr><td>";
+  if (pos < g.news.length - 1) h += "<a href='#article/" + g.news[pos + 1].id + "'>&laquo; Newer story</a>";
+  h += "</td><td align=center><a href='#news'>All news</a> | <a href='#news/outlet=" + a.outlet + "'>More from " + esc(o ? o.name : "this paper") + "</a></td><td align=right>";
+  if (pos > 0) h += "<a href='#article/" + g.news[pos - 1].id + "'>Older story &raquo;</a>";
+  h += "</td></tr></table>";
+  var same = [];
+  for (var i = g.news.length - 1; i >= 0; i--) {
+    if (g.news[i].event == a.event && g.news[i].id != a.id) same.push(g.news[i]);
+  }
+  if (same.length) {
+    h += "<div class='box'><b>How the other papers covered it:</b><ul style='margin:4px 0'>";
+    for (var i = 0; i < same.length; i++) h += "<li>" + outletName(same[i].outlet) + ": <a href='#article/" + same[i].id + "'>" + esc(same[i].headline) + "</a></li>";
+    h += "</ul></div>";
+  }
+  return h;
 }
 
 </script>
@@ -8296,9 +8571,29 @@ function route() {
   }
   $("main").innerHTML = html;
   for (var i = 0; i < afterRender.length; i++) afterRender[i]();
+  var parent = PAGE_PARENT[page];
+  var full = "#" + page;
+  if (arg) full = "#" + page + "/" + arg;
   var links = document.querySelectorAll("#nav a");
-  for (var i = 0; i < links.length; i++) links[i].className = links[i].getAttribute("href") == "#" + page ? "current" : "";
-  $("crumb").innerHTML = "Home &raquo; " + esc(PAGE_TITLES[page] || page);
+  var found = false;
+  for (var i = 0; i < links.length; i++) {
+    links[i].className = "";
+    if (links[i].getAttribute("href") == full) { links[i].className = "current"; found = true; }
+  }
+  if (!found) {
+    for (var i = 0; i < links.length; i++) {
+      var href = links[i].getAttribute("href");
+      if (href == "#" + page || (parent && href == "#" + parent)) links[i].className = "current";
+    }
+  }
+  var crumb = "<a href='#dashboard'>Home</a>";
+  if (parent) crumb += " &raquo; <a href='#" + parent + "'>" + esc(PAGE_TITLES[parent] || parent) + "</a>";
+  if (page == "world" && arg) {
+    var sub = arg.split("/")[0];
+    crumb += " &raquo; <a href='#world'>The World Online</a> &raquo; " + esc(sub.charAt(0).toUpperCase() + sub.slice(1));
+  }
+  else crumb += " &raquo; " + esc(PAGE_TITLES[page] || page);
+  $("crumb").innerHTML = crumb;
   drawShell();
   window.scrollTo(0, 0);
 }
