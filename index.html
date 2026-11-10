@@ -241,6 +241,32 @@ body #menubtn .ic { color: inherit; }
   .regioncard { width: 46%; margin-right: 3%; }
   .regioncard .picslot { width: 100% !important; }
 }
+body { line-height: 1.4; }
+#topbar { position: sticky; top: 0; z-index: 50; }
+.navfind { padding: 6px; background: #F1F1F1; border-bottom: 1px solid #DDD; }
+.navfind input { width: 100%; box-sizing: border-box; padding: 4px 6px; border: 1px solid #BBB; font-size: 12px; }
+#nav .navhead { cursor: pointer; user-select: none; }
+#nav .navhead:hover { filter: brightness(1.08); }
+.navarrow { display: inline-block; width: 12px; font-size: 10px; }
+#nav li a { padding: 5px 8px; }
+#nav li a:not(.current):hover { background: #E4E8EE; }
+#nav li a:hover { text-decoration: none; }
+button:hover, input[type=submit]:hover { background: #EAEAEA; }
+.helpbox summary { cursor: pointer; }
+.helpbox:not([open]) { padding: 3px 8px; }
+.helpbox[open] summary { margin-bottom: 4px; }
+#totop { display: none; position: fixed; right: 16px; bottom: 16px; z-index: 60; width: 38px; height: 38px; line-height: 38px; text-align: center; border: 2px outset #888; background: #17345B; color: #fff; font-size: 18px; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+#totop:hover { text-decoration: none; filter: brightness(1.15); }
+body.theme-green #totop { background: #1E5631; }
+body.theme-red #totop { background: #7A1B1B; }
+body.theme-purple #totop { background: #4B2A6B; }
+body.theme-teal #totop { background: #14545A; }
+body.theme-orange #totop { background: #8A4A0F; }
+body.theme-grey #totop { background: #333333; }
+@media (max-width: 700px) {
+  .navfind { padding: 6px 8px; }
+  #nav .navhead { padding: 6px 8px; font-size: 11px; }
+}
 
 </style>
 </head>
@@ -263,6 +289,7 @@ body #menubtn .ic { color: inherit; }
       </td>
     </tr></table>
   </div>
+  <a id="totop" href="javascript:window.scrollTo(0,0)" title="Back to top">&uarr;</a>
   <div id="topbar"><button id="menubtn" onclick="toggleMenu()">&#9776; Menu</button> You are here: <span id="crumb">Home</span></div>
 
   <table id="layout"><tr>
@@ -7458,7 +7485,9 @@ function helpHidden(page) { try { return localStorage.getItem("ngs_help_" + page
 function helpBox(page) {
   var h = PAGE_HELP[page];
   if (!h || helpHidden(page)) return "";
-  return "<div class='helpbox'><a class='helpclose' href='javascript:hideHelp(\"" + page + "\")' title='Hide this box'>[hide]</a><b>What is this page?</b> " + h[0] + "<br><b>What can I do here?</b> " + h[1] + (h[2] ? "<br><b>Tip:</b> " + h[2] : "") + "</div>";
+  var seen = false;
+  try { seen = localStorage.getItem("ngs_helpseen_" + page) == "1"; localStorage.setItem("ngs_helpseen_" + page, "1"); } catch (e) { }
+  return "<details class='helpbox'" + (seen ? "" : " open") + "><summary><b>About this page</b> <span class='small'>(click to " + (seen ? "open" : "close") + ")</span></summary><a class='helpclose' href='javascript:hideHelp(\"" + page + "\")' title='Never show this box on this page'>[hide for good]</a><b>What is this page?</b> " + h[0] + "<br><b>What can I do here?</b> " + h[1] + (h[2] ? "<br><b>Tip:</b> " + h[2] : "") + "</details>";
 }
 function hideHelp(page) { try { localStorage.setItem("ngs_help_" + page, "hide"); } catch (e) { } route(); }
 function showAllHelp() { try { for (var k in PAGE_HELP) localStorage.removeItem("ngs_help_" + k); } catch (e) { } alert("Help boxes are back on every page."); route(); }
@@ -9028,6 +9057,7 @@ function route() {
   $("crumb").innerHTML = crumb;
   document.body.className = document.body.className.replace(" menuopen", "");
   drawShell();
+  drawNavFolds();
   window.scrollTo(0, 0);
 }
 var recentPages = [];
@@ -9052,7 +9082,7 @@ function pageName(where) {
 }
 function pageFootHtml(page, arg) {
   var h = "<div class='pagefoot'>";
-  h += "<a href='javascript:window.scrollTo(0,0)'>&uarr; Back to top</a>";
+  h += "<a href='javascript:window.scrollTo(0,0)'>Back to top</a>";
   if (page != "dashboard") h += " | <a href='#dashboard'>Dashboard</a>";
   if (!game.gameOver) h += " | <a href='javascript:advance(1)'>Advance 1 week &raquo;</a>";
   var links = [];
@@ -9270,6 +9300,7 @@ function setTheme(t) {
 window.onload = function () {
   applyTheme();
   addNavIcons();
+  setupNav();
   try {
     var raw = localStorage.getItem("ngs_autosave");
     if (raw) {
@@ -9290,6 +9321,99 @@ document.onkeydown = function (e) {
   if (e.target.tagName == "INPUT" || e.target.tagName == "SELECT" || e.target.tagName == "TEXTAREA") return;
   if (e.key == "n" || e.key == "N") advance(1);
 };
+var NAV_FOLD_START = ["COUNTRY AND WORLD", "NEWS AND RECORDS", "YOUR MOVEMENT", "HELP"];
+function navFolded() {
+  var list = null;
+  try { list = JSON.parse(localStorage.getItem("ngs_navfold")); } catch (e) { }
+  if (!list) list = NAV_FOLD_START.slice();
+  return list;
+}
+function saveNavFolded(list) {
+  try { localStorage.setItem("ngs_navfold", JSON.stringify(list)); } catch (e) { }
+}
+function setupNav() {
+  var nav = $("nav");
+  if (!nav || nav.getAttribute("data-setup")) return;
+  nav.setAttribute("data-setup", "1");
+  var find = document.createElement("div");
+  find.className = "navfind";
+  find.innerHTML = "<input type='text' id='navfind' placeholder='Find a page...' oninput='navFilter(this.value)' onkeydown='navFindKey(event)'>";
+  nav.insertBefore(find, nav.firstChild);
+  var heads = nav.getElementsByClassName("navhead");
+  for (var i = 0; i < heads.length; i++) {
+    var hd = heads[i];
+    hd.setAttribute("data-name", hd.textContent);
+    hd.innerHTML = "<span class='navarrow'></span>" + hd.innerHTML;
+    hd.onclick = navToggle;
+    hd.title = "Click to open or close";
+  }
+  drawNavFolds();
+}
+function drawNavFolds() {
+  var list = navFolded();
+  var heads = document.getElementsByClassName("navhead");
+  for (var i = 0; i < heads.length; i++) {
+    var hd = heads[i];
+    var ul = hd.nextElementSibling;
+    if (!ul) continue;
+    var shut = list.indexOf(hd.getAttribute("data-name")) >= 0;
+    if (ul.querySelector("a.current")) shut = false;
+    if ($("navfind") && $("navfind").value) shut = false;
+    ul.style.display = shut ? "none" : "";
+    hd.style.display = "";
+    if ($("navfind") && $("navfind").value) {
+      var any = false;
+      var lis = ul.getElementsByTagName("li");
+      for (var j = 0; j < lis.length; j++) if (lis[j].style.display != "none") any = true;
+      if (!any) { hd.style.display = "none"; ul.style.display = "none"; }
+    }
+    hd.firstChild.innerHTML = shut ? "&#9656;" : "&#9662;";
+  }
+}
+function navToggle() {
+  var name = this.getAttribute("data-name");
+  var list = navFolded();
+  var ul = this.nextElementSibling;
+  var at = list.indexOf(name);
+  if (ul.style.display == "none") {
+    if (at >= 0) list.splice(at, 1);
+    ul.style.display = "";
+    this.firstChild.innerHTML = "&#9662;";
+  } else {
+    if (at < 0) list.push(name);
+    ul.style.display = "none";
+    this.firstChild.innerHTML = "&#9656;";
+  }
+  saveNavFolded(list);
+}
+function navFilter(text) {
+  text = text.toLowerCase();
+  var items = document.querySelectorAll("#nav li");
+  for (var i = 0; i < items.length; i++) {
+    var hit = items[i].textContent.toLowerCase().indexOf(text) >= 0;
+    items[i].style.display = (!text || hit) ? "" : "none";
+  }
+  drawNavFolds();
+}
+function navFindKey(e) {
+  if (e.key == "Escape") { e.target.value = ""; navFilter(""); return; }
+  if (e.key != "Enter") return;
+  var items = document.querySelectorAll("#nav li");
+  for (var i = 0; i < items.length; i++) {
+    if (items[i].style.display != "none") {
+      var a = items[i].getElementsByTagName("a")[0];
+      e.target.value = "";
+      navFilter("");
+      location.hash = a.getAttribute("href");
+      return;
+    }
+  }
+}
+window.addEventListener("scroll", function () {
+  var b = $("totop");
+  if (!b) return;
+  b.style.display = window.scrollY > 600 ? "block" : "none";
+});
 
 </script>
 </body>
