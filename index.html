@@ -472,7 +472,7 @@ var LAST_NAMES = ["Varga", "Lindqvist", "Moreau", "Kessler", "Novak", "Halloran"
   "O'Brien", "Byrne", "Kavanagh", "Doyle", "Mensah", "Adeyemi", "Nwosu", "Haddad", "Rahman", "Patel", "Sharma", "Nakamura", "Tanaka", "Chen", "Wong", "Silva", "Santos", "Mendes", "Navarro", "Ortega", "Delgado", "Kerr", "Munro", "Sinclair", "Blackwood", "Thornton", "Ellery", "Quinlan", "Carver"];
 var TEMPLATES = {
   A: {
-    title: "High-tax welfare monarchy",
+    title: "Left extreme: high-tax welfare monarchy in the far north (like Sweden)",
     name: "Kingdom of Skarnland",
     capital: "Holmvik",
     currency: "riksdaler",
@@ -490,7 +490,7 @@ var TEMPLATES = {
       executive: "pm", headOfState: "monarch_const", legislature: "elected", chambers: 1, upperHouse: "regional", legPower: "full",
       seats: 349, electionSystem: "national", elections: "free", partySystem: "multi", termYears: 4, termLimit: 0, confidenceRule: true,
       amendThreshold: 0.667, referendum: true, fiscalRule: 0, centralBankIndependent: true, judiciary: "independent", territory: "unitary",
-      press: "free", assembly: "free", votingAge: 18, religion: "tolerant", emergency: "limited", economy: "mixed", leaderTitle: ""
+      press: "free", assembly: "free", votingAge: 18, religion: "tolerant", emergency: "limited", economy: "mixed", leaderTitle: "", succession: "hereditary", nobility: "titles"
     },
     regions: [
       { name: "Holmvik Capital Region", pop: 2.6, income: 1.3, unemp: 0.85, seats: 86 },
@@ -514,13 +514,13 @@ var TEMPLATES = {
     ]
   },
   B: {
-    title: "Low-tax federal superpower with two big parties",
-    name: "States of Vespucia",
-    capital: "New Napolia",
+    title: "Right extreme: low-tax federal superpower with two big parties (like the USA)",
+    name: "Concordant States of Vespucia",
+    capital: "Franklin City",
     currency: "eagle",
     currencySymbol: "E$",
     languages: "Vespucian, Castilian",
-    flag: ["#1C2E5C", "#FFFFFF", "#A51C30"],
+    flag: ["#1C2E5C", "#E8E2D0", "#A51C30"],
     govType: "Presidential federal republic",
     leaderTitle: "President",
     electionSystem: "fptp",
@@ -553,8 +553,8 @@ var TEMPLATES = {
     ]
   },
   C: {
-    title: "Coalition-run social market federation",
-    name: "Federal Republic of Alemanny",
+    title: "Middle: coalition-run social market federation (like Germany)",
+    name: "Federal Republic of Alemannia",
     capital: "Spreeburg",
     currency: "taler",
     currencySymbol: "T",
@@ -646,16 +646,18 @@ var POLICIES = [
     desc: "Investigates officials. Lowers corruption, which improves tax collection and trust.", supporters: "Almost everyone (in public)", opponents: "Corrupt officials" }
 ];
 var CONST_FIELDS = [
-  { id: "executive", group: "Who rules", name: "Head of government (that's you)", options: [["pm", "Prime minister chosen by the legislature"], ["president", "President elected by the people"], ["monarch", "Hereditary monarch"], ["partyleader", "Leader of the ruling party"], ["junta", "Military council"]] },
+  { id: "executive", group: "Who rules", name: "Head of government (that's you)", options: [["pm", "Prime minister chosen by the legislature"], ["president", "President elected by the people"], ["monarch", "Monarch who rules in person"], ["partyleader", "Leader of the ruling party"], ["junta", "Military council"], ["council", "Council of state chosen by the upper chamber (you chair it)"]] },
   { id: "headOfState", group: "Who rules", name: "Head of state", options: [["same", "Same person as head of government"], ["monarch_const", "Ceremonial monarch"], ["monarch_abs", "Ruling monarch with real power"], ["president_indirect", "Ceremonial president chosen by the legislature"], ["president_elected", "Directly elected president"]] },
   { id: "leaderTitle", group: "Who rules", name: "Your title (blank = automatic)", type: "text" },
   { id: "termYears", group: "Who rules", name: "Term length (years)", type: "number", min: 2, max: 7 },
   { id: "termLimit", group: "Who rules", name: "Term limit for the head of government (0 = none)", type: "number", min: 0, max: 5 },
   { id: "emergency", group: "Who rules", name: "Emergency powers", options: [["none", "None"], ["limited", "Limited, expire after 90 days"], ["broad", "Broad - can rule by decree"]] },
+  { id: "succession", group: "Crown and nobility", name: "How the throne passes on (if there is a monarch)", options: [["none", "No ruling family"], ["hereditary", "Hereditary: the eldest child inherits"], ["elective", "Elective: the nobles choose the next monarch"], ["designated", "The monarch names their own heir"]] },
+  { id: "nobility", group: "Crown and nobility", name: "Nobility", options: [["none", "No noble titles, all citizens equal"], ["titles", "Titles of honour only, no special powers"], ["privileged", "Privileged aristocracy: land, tax breaks, top jobs"], ["ruling", "Ruling aristocracy: nobles run the state and the army"]] },
   { id: "legislature", group: "Legislature", name: "Legislature", options: [["elected", "Elected"], ["appointed", "Appointed by the government"], ["none", "No legislature - rule by decree"]] },
   { id: "legPower", group: "Legislature", name: "Power of the legislature", options: [["full", "Full - laws need its majority"], ["advisory", "Advisory - government can override it"], ["rubber", "Rubber stamp - always agrees"]] },
   { id: "chambers", group: "Legislature", name: "Chambers", options: [[1, "One chamber"], [2, "Two chambers"]] },
-  { id: "upperHouse", group: "Legislature", name: "Upper chamber (if two)", options: [["regional", "Represents the regions"], ["elected", "Elected nationally"], ["appointed", "Appointed by the government"]] },
+  { id: "upperHouse", group: "Legislature", name: "Upper chamber (if two)", options: [["regional", "Represents the regions"], ["elected", "Elected nationally"], ["appointed", "Appointed by the government"], ["hereditary", "Hereditary lords (noble families pass on their seats)"], ["estates", "Estates: nobles, clergy and guilds"]] },
   { id: "seats", group: "Legislature", name: "Seats in the (lower) chamber", type: "number", min: 30, max: 650 },
   { id: "confidenceRule", group: "Legislature", name: "Government needs the legislature's confidence", options: [[true, "Yes"], [false, "No"]] },
   { id: "elections", group: "Elections", name: "Elections", options: [["free", "Free and fair"], ["restricted", "Held, but tilted toward the government"], ["none", "No elections"]] },
@@ -1150,7 +1152,7 @@ function calcFlows(g, initial) {
   f.vat = f.C * 0.55 * vatRate / (1 + vatRate) * g.compliance;
   f.excise = f.C * 0.1 * t.excise / 100 * g.compliance;
   f.corpTax = f.profits * t.corp / 100 * clamp(Math.pow((1 - t.corp / 100) / (1 - g.taxes0.corp / 100), 0.4), 0.85, 1.1) * g.compliance;
-  f.propertyTax = 3.5 * Yprev * t.property / 100 * g.compliance;
+  f.propertyTax = 3.5 * Yprev * t.property / 100 * g.compliance * ({ privileged: 0.85, ruling: 0.7 }[g.constitution.nobility] || 1);
   f.tariffs = f.M * t.tariff / 100;
   f.carbonTax = e.emissions * t.carbon / 1000;
   f.otherRev = g.budget.otherRevenue * e.price;
@@ -1675,7 +1677,7 @@ function holdElection(g) {
   var c = g.constitution;
   var sys = c.electionSystem;
   var me = playerParty(g), myIdx = g.parties.indexOf(me);
-  var accountable = c.executive == "pm" || c.executive == "president";
+  var accountable = c.executive == "pm" || c.executive == "president" || c.executive == "council";
   if (c.termLimit > 0 && accountable && g.politics.termsServed >= c.termLimit) {
     addEvent(g, "termLimit", 3, g.leaderName + " steps down after reaching the term limit", { terms: g.politics.termsServed, limit: c.termLimit },
       "The constitution allows " + c.termLimit + " term(s). Amend it to stay longer.", 0, true);
@@ -2491,6 +2493,10 @@ function normalizeConstitution(c, nRegions) {
   if (c.executive == "pm" && c.legislature == "none") c.executive = "partyleader";
   if (c.executive != "pm") c.confidenceRule = false;
   if (c.headOfState == "monarch_abs" && c.executive != "monarch") c.headOfState = "monarch_const";
+  var hasCrown = c.executive == "monarch" || c.headOfState == "monarch_const" || c.headOfState == "monarch_abs";
+  if (!c.succession) c.succession = hasCrown ? "hereditary" : "none";
+  if (!hasCrown) c.succession = "none";
+  if (!c.nobility) c.nobility = "none";
   c.title = c.leaderTitle && String(c.leaderTitle).trim() ? String(c.leaderTitle).trim() : defaultTitle(c);
   c.govType = describeGov(c);
   c.amendmentText = amendmentText(c);
@@ -2502,6 +2508,7 @@ function defaultTitle(c) {
   if (c.executive == "president") return c.elections == "none" ? "President for Life" : "President";
   if (c.executive == "monarch") return "Monarch";
   if (c.executive == "partyleader") return "General Secretary";
+  if (c.executive == "council") return "Chair of the Council of State";
   return "Chairman of the Military Council";
 }
 function describeGov(c) {
@@ -2509,11 +2516,14 @@ function describeGov(c) {
   if (c.executive == "junta") t = "Military junta";
   else if (c.executive == "partyleader" && c.partySystem == "single") t = "One-party state";
   else if (c.executive == "monarch") t = c.legislature == "elected" && c.legPower == "full" ? "Constitutional monarchy with a ruling monarch" : "Absolute monarchy";
+  else if (c.executive == "council") t = c.nobility == "ruling" || c.nobility == "privileged" ? "Aristocratic republic" : "Directorial republic";
   else if (c.executive == "partyleader") t = "Party-led republic";
   else if (c.executive == "president") t = c.headOfState == "monarch_const" ? "Presidential monarchy" : "Presidential republic";
   else if (c.executive == "pm") t = c.headOfState == "monarch_const" ? "Parliamentary constitutional monarchy" : (c.headOfState == "president_elected" ? "Semi-presidential republic" : "Parliamentary republic");
+  if (c.succession == "elective") t += " (elective throne)";
+  if (c.nobility == "ruling" && c.executive != "council") t += ", ruled by the nobility";
   if (c.elections == "restricted") t = "Electoral autocracy (" + t.toLowerCase() + ")";
-  if (c.elections == "none" && (c.executive == "pm" || c.executive == "president")) t = "Authoritarian " + t.toLowerCase();
+  if (c.elections == "none" && (c.executive == "pm" || c.executive == "president" || c.executive == "council")) t = "Authoritarian " + t.toLowerCase();
   if (c.territory == "federal") t += ", federal";
   if (c.economy == "planned") t += ", planned economy";
   return t;
@@ -2550,7 +2560,10 @@ function democracyIndex(g) {
   d += { independent: 14, partial: 7, controlled: 0 }[c.judiciary];
   d += { free: 14, restricted: 6, state: 0 }[c.press];
   d += { free: 10, restricted: 5, banned: 0 }[c.assembly];
-  d += c.executive == "pm" || c.executive == "president" ? 6 : 0;
+  d += c.executive == "pm" || c.executive == "president" ? 6 : (c.executive == "council" ? 3 : 0);
+  d -= { none: 0, titles: 0, privileged: 4, ruling: 10 }[c.nobility] || 0;
+  if (c.chambers == 2 && c.upperHouse == "hereditary") d -= 3;
+  if (c.chambers == 2 && c.upperHouse == "estates") d -= 2;
   d += c.termLimit > 0 || c.executive == "pm" ? 2 : 0;
   d += { none: 2, limited: 2, broad: 0 }[c.emergency];
   if (g.policies && g.policies.surveillance && g.policies.surveillance.active) d -= g.policies.surveillance.value * 0.1;
@@ -2572,6 +2585,9 @@ function constFit(g, c) {
   if (k.assembly == "banned") x -= 0.03;
   if (k.votingAge <= 16 && c.age == 1) x += 0.005;
   if (k.headOfState == "monarch_const" || k.headOfState == "monarch_abs") x += social < 45 ? 0.015 : -0.01;
+  if (k.nobility == "titles") x += social < 45 ? 0.005 : 0;
+  if (k.nobility == "privileged") x += (social < 45 ? 0.02 : -0.02) + (c.q <= 1 ? -0.01 : (c.q >= 4 ? 0.005 : 0));
+  if (k.nobility == "ruling") x += (social < 45 ? 0.025 : -0.04) + (c.q <= 1 ? -0.02 : 0);
   return x;
 }
 function constitutionTransition(g, old) {
@@ -2636,6 +2652,9 @@ function constitutionTransition(g, old) {
     g.politics.termsServed = 1;
   }
   if (c.chambers == 2 && !g.upper) computeUpper(g);
+  if (c.chambers == 2 && c.upperHouse != old.upperHouse) computeUpper(g);
+  if (c.succession != old.succession && g.crown) { g.crown.heir = null; if (c.executive == "monarch") ensureCrown(g); }
+  if (c.nobility != old.nobility && old.nobility) addEvent(g, "regime", 2, c.nobility == "none" ? "Noble titles abolished" : "The nobility gets a new place in the constitution", { from: old.nobility, to: c.nobility }, "Constitutional change.", 0, false);
   if (c.executive != "pm" && c.partySystem == "multi") {
     var me = playerParty(g);
     for (var i = 0; i < g.parties.length; i++) g.parties[i].inGov = g.parties[i].player || (!g.parties[i].banned && Math.abs(g.parties[i].econ - me.econ) < 10 && g.parties[i].inGov);
@@ -2670,6 +2689,15 @@ function computeUpper(g) {
   var seats = g.parties.map(function () { return 0; });
   if (c.upperHouse == "appointed" || c.partySystem == "single") {
     seats[g.parties.indexOf(playerParty(g))] = c.upperSeats;
+  } else if (c.upperHouse == "hereditary" || c.upperHouse == "estates") {
+    var wts = g.parties.map(function (p) {
+      if (p.banned) return 0;
+      var w = Math.max(0.03, (65 - p.social) / 65);
+      if (c.upperHouse == "estates") w = w * Math.max(0.2, 1 - Math.abs(p.econ - 50) / 60);
+      return w * w;
+    });
+    var tw = sum(wts) || 1;
+    seats = dhondt(wts.map(function (w) { return w / tw; }), c.upperSeats, 0);
   } else if (c.upperHouse == "regional") {
     var per = Math.round(c.upperSeats / g.regions.length);
     for (var r = 0; r < g.regions.length; r++) {
@@ -2686,21 +2714,22 @@ function regimeWeekly(g) {
   P.di = di;
   var a = P.approval;
   var ac = g.policies.anticorruption && g.policies.anticorruption.active ? g.policies.anticorruption.value / (g.econ.gdp * 0.001) * 3 : 0;
-  var corrTarget = 15 + (100 - di) * 0.35 + { independent: 0, partial: 4, controlled: 10 }[c.judiciary] + (c.press == "free" ? 0 : 5) - ac + (g.template == "B" ? 6 : (g.template == "C" ? 2 : 0)) + (g.lawFx ? g.lawFx.corrupt : 0);
+  var corrTarget = 15 + (100 - di) * 0.35 + { independent: 0, partial: 4, controlled: 10 }[c.judiciary] + (c.press == "free" ? 0 : 5) - ac + (g.template == "B" ? 6 : (g.template == "C" ? 2 : 0)) + ({ privileged: 4, ruling: 8 }[c.nobility] || 0) + (g.lawFx ? g.lawFx.corrupt : 0);
   P.corruption += (clamp(corrTarget, 2, 95) - P.corruption) * 0.01;
   g.compliance = clamp(g.compliance0 - (P.corruption - P.corruption0) * 0.002, 0.5, 0.99);
   var warBoost = g.war ? (g.war.front > 0 ? 5 : -5) : 0;
-  var legTarget = 30 + di * 0.3 + (a - 0.4) * 60 + (c.headOfState == "monarch_const" ? 5 : 0) + warBoost - (P.corruption - 30) * 0.15 + (g.lawFx ? g.lawFx.legit : 0);
+  var legTarget = 30 + di * 0.3 + (a - 0.4) * 60 + (c.headOfState == "monarch_const" ? 5 : 0) + crownLegit(c) + warBoost - (P.corruption - 30) * 0.15 + (g.lawFx ? g.lawFx.legit : 0);
   P.legitimacy += (clamp(legTarget, 0, 100) - P.legitimacy) * 0.02;
   var d = g.defence;
   var realDef = g.budget.lines.defence / (g.econ.wage / g.econ.wage0);
   var minComp = minister(g, "defence").competence;
-  var loyTarget = 55 + 40 * (realDef / d.base - 1) + (c.executive == "junta" ? 25 : 0) + (c.executive == "monarch" ? 5 : 0) + (minComp - 0.5) * 20 - (g.war && g.war.front < -30 ? 15 : 0) + (P.legitimacy - 50) * 0.2 + (g.lawFx ? g.lawFx.loyalty : 0);
+  var loyTarget = 55 + 40 * (realDef / d.base - 1) + (c.executive == "junta" ? 25 : 0) + (c.executive == "monarch" ? 5 : 0) + ({ privileged: 3, ruling: 8 }[c.nobility] || 0) + (minComp - 0.5) * 20 - (g.war && g.war.front < -30 ? 15 : 0) + (P.legitimacy - 50) * 0.2 + (g.lawFx ? g.lawFx.loyalty : 0);
   d.loyalty += (clamp(loyTarget, 0, 100) - d.loyalty) * 0.02;
   var vent = { free: 0.7, restricted: 1.0, banned: 1.3 }[c.assembly] * (c.elections == "free" ? 0.8 : 1.15);
   var unrestTarget = clamp((0.42 - a) * 220, 0, 100) * vent - (P.legitimacy - 50) * 0.3 + (c.press == "state" ? 5 : 0) + (g.lawFx ? g.lawFx.unrest : 0);
   P.unrest += (clamp(unrestTarget, 0, 100) - P.unrest) * 0.03;
   if (g.calm) return;
+  crownWeekly(g);
   if (P.unrest > 50 && c.assembly != "free" && (P.riotCooldown || 0) <= 0 && chance(g, 0.03)) {
     var r = Math.floor(rand(g) * g.regions.length);
     P.riotCooldown = 10;
@@ -2976,6 +3005,94 @@ function overrideBill(g, id) {
   g.politics.mood -= 0.01;
   g.commandLog.push({ week: g.week, cmd: "override", bill: id });
   addEvent(g, "override", 2, g.constitution.title + " overrides the legislature on " + b.title, { bill: id }, "The legislature is only advisory under the constitution.", -1, false, id);
+  return true;
+}
+
+function crownLegit(c) {
+  var x = 0;
+  if (c.executive == "monarch") x += { hereditary: 4, elective: 2, designated: 1, none: -5 }[c.succession] || 0;
+  if (c.nobility == "ruling") x -= 3;
+  return x;
+}
+function leaderAge(g) {
+  if (!g.leader) g.leader = { job: "", jobSet: false, bio: "", born: g.startYear - 52 };
+  return weekYear(g) - g.leader.born;
+}
+function lastWord(n) { var a = String(n || "").split(" "); return a[a.length - 1] || "Royal"; }
+function makeHeir(g) {
+  var c = g.constitution, cr = g.crown, born;
+  if (c.succession == "hereditary") return { name: pick(g, FIRST_NAMES) + " " + lastWord(g.leaderName), born: Math.min(weekYear(g), g.leader.born + 24 + Math.floor(rand(g) * 12)), kind: "eldest child" };
+  if (c.succession == "elective") return { name: pick(g, FIRST_NAMES) + " " + pick(g, LAST_NAMES), born: weekYear(g) - 40 - Math.floor(rand(g) * 15), kind: "favourite of the nobles" };
+  if (c.succession == "designated") return { name: pick(g, FIRST_NAMES) + " " + pick(g, LAST_NAMES), born: weekYear(g) - 35 - Math.floor(rand(g) * 15), kind: "named by you" };
+  return null;
+}
+function ensureCrown(g) {
+  leaderAge(g);
+  if (!g.crown) g.crown = { house: "House of " + lastWord(g.leaderName), reign: 1, heir: null, past: [] };
+  if (!g.crown.heir && g.constitution.succession != "none") g.crown.heir = makeHeir(g);
+  if (g.crown.heir && g.constitution.succession == "none") g.crown.heir = null;
+  return g.crown;
+}
+function crownWeekly(g) {
+  if (g.constitution.executive != "monarch" || g.gameOver) return;
+  ensureCrown(g);
+  var age = leaderAge(g);
+  var p = 0.00004 * Math.exp((age - 50) / 8);
+  if (chance(g, p)) succeedThrone(g, "death");
+}
+function succeedThrone(g, why) {
+  var c = g.constitution, cr = ensureCrown(g), P = g.politics, old = g.leaderName, heir = cr.heir, y = weekYear(g), text = "", head = "";
+  var gone = why == "death" ? old + " has died" : old + " gives up the throne";
+  if (c.succession == "none" || !heir) {
+    heir = { name: randomName(g), born: y - 40 - Math.floor(rand(g) * 15) };
+    P.legitimacy = clamp(P.legitimacy - 20, 0, 100); P.unrest = clamp(P.unrest + 20, 0, 100); g.defence.loyalty = clamp(g.defence.loyalty - 10, 0, 100);
+    cr.house = "House of " + lastWord(heir.name);
+    head = "Succession crisis: " + heir.name + " seizes the throne";
+    text = gone + " and the constitution has no rule for who comes next. After weeks of plotting, " + heir.name + " takes the crown. Many people do not accept it.";
+  } else if (c.succession == "elective") {
+    var odds = clamp(0.35 + P.legitimacy / 200 + ({ ruling: 0.15, privileged: 0.08 }[c.nobility] || 0), 0.1, 0.9);
+    if (rand(g) < odds) {
+      P.legitimacy = clamp(P.legitimacy - 4, 0, 100);
+      head = "The nobles elect " + heir.name + " as the new monarch";
+      text = gone + ". The electors met and chose " + heir.name + " without a fight.";
+    } else {
+      P.legitimacy = clamp(P.legitimacy - 12, 0, 100); P.unrest = clamp(P.unrest + 8, 0, 100);
+      head = "Bitter royal election: " + heir.name + " wins narrowly";
+      text = gone + ". The noble electors split into rival camps. " + heir.name + " won in the end, but the losing families are angry.";
+    }
+    cr.house = "House of " + lastWord(heir.name);
+  } else if (c.succession == "designated") {
+    P.legitimacy = clamp(P.legitimacy - 5, 0, 100);
+    head = heir.name + " takes the throne as the chosen heir";
+    text = gone + ". " + heir.name + ", named heir by the late ruler, is crowned. Some ask why this person was picked.";
+    cr.house = "House of " + lastWord(heir.name);
+  } else {
+    var hage = y - heir.born;
+    if (hage < 18) {
+      P.legitimacy = clamp(P.legitimacy - 8, 0, 100);
+      head = "Child monarch " + heir.name + " crowned, a regency council rules";
+      text = gone + ". The heir, " + heir.name + ", is only " + hage + ", so a regency council will govern in their name.";
+    } else {
+      P.legitimacy = clamp(P.legitimacy - 2, 0, 100);
+      head = "Long live " + heir.name + "! The crown passes to the heir";
+      text = gone + ". The eldest child, " + heir.name + " (aged " + hage + "), inherits the throne as the law says.";
+    }
+  }
+  if (why == "abdication") P.legitimacy = clamp(P.legitimacy + 3, 0, 100);
+  cr.past = (cr.past || []).concat([{ name: old, until: g.week, why: why }]).slice(-12);
+  cr.reign++;
+  g.leaderName = heir.name.slice(0, 40);
+  playerParty(g).leader = g.leaderName;
+  g.leader.born = heir.born; g.leader.bio = "";
+  cr.heir = null;
+  ensureCrown(g);
+  addEvent(g, "succession", 3, head, { old: old, monarch: g.leaderName, rule: c.succession, why: why }, text, head.indexOf("crisis") >= 0 || head.indexOf("Bitter") >= 0 ? -1 : 0, true);
+}
+function abdicate(g) {
+  var c = g.constitution;
+  if (c.executive != "monarch" || c.succession == "none") return false;
+  ensureCrown(g);
+  succeedThrone(g, "abdication");
   return true;
 }
 
@@ -6219,10 +6336,10 @@ PAGES.parliament = function () {
   }
   h += "</table>";
   if (g.upper) {
-    h += "<h2>Upper chamber (" + g.upper.total + " seats, " + ({ regional: "represents the regions", elected: "elected nationally", appointed: "appointed" }[con.upperHouse]) + ")</h2>" + seatBar(g, g.upper.seats);
+    h += "<h2>Upper chamber (" + g.upper.total + " seats, " + ({ regional: "represents the regions", elected: "elected nationally", appointed: "appointed", hereditary: "hereditary lords", estates: "estates of nobles, clergy and guilds" }[con.upperHouse]) + ")</h2>" + seatBar(g, g.upper.seats);
     h += "<table class='data'><tr><th>Party</th><th class='num'>Seats</th></tr>";
     for (var i = 0; i < g.parties.length; i++) if (g.upper.seats[i]) h += "<tr><td>" + esc(g.parties[i].name) + "</td><td class='num'>" + g.upper.seats[i] + "</td></tr>";
-    h += "</table><p class='small'>" + (con.upperHouse == "appointed" ? "Appointed members always back the government." : "Bills must also pass here.") + "</p>";
+    h += "</table><p class='small'>" + (con.upperHouse == "hereditary" || con.upperHouse == "estates" ? "Nobody elects these members. They lean towards traditional parties and bills must also pass here. " : "") + (con.upperHouse == "appointed" ? "Appointed members always back the government." : "Bills must also pass here.") + "</p>";
   }
   h += "<p class='small'>Positions are 0-100. Economic: 0 = far left, 100 = free market. Social: 0 = traditional, 100 = liberal. Coalition partners quit when their patience hits 0.</p>";
   if (g.politics.lastConfidence) {
@@ -6367,6 +6484,7 @@ PAGES.law = function (arg) {
       var v = f.id == "leaderTitle" ? c.title : c[f.id];
       h += "<tr><td>" + f.name + "</td><td>" + fmtVal(v, { kind: "amend", id: f.id }) + "</td></tr>";
     }
+    if (c.executive == "monarch") h += "<tr><th colspan=2 class='grouphead'>Royal house</th></tr><tr><td colspan=2>" + royalHouseHtml(g) + "</td></tr>";
     h += "<tr><th colspan=2 class='grouphead'>Regions</th></tr><tr><td>Regions</td><td>" + g.regions.length + ": " + g.regions.map(function (r) { return esc(r.name); }).join(", ") + "</td></tr>";
     h += "</table><p><a href='#law/amend'>Amend the constitution &raquo;</a></p>";
   }
@@ -7043,6 +7161,31 @@ PAGES.help = function () {
   return h;
 };
 
+function royalHouseHtml(g) {
+  var c = g.constitution, cr = ensureCrown(g), y = weekYear(g);
+  var h = "<b>" + esc(cr.house) + "</b>. Reigning: <b>" + esc(g.leaderName) + "</b>, aged " + leaderAge(g) + " (monarch number " + cr.reign + " of the game).<br>";
+  if (cr.heir) h += "Heir: <b>" + esc(cr.heir.name) + "</b>, aged " + (y - cr.heir.born) + " (" + cr.heir.kind + ").<br>";
+  else h += "<span class='bad'>There is no heir.</span> The constitution has no rule for who comes next, so a death on the throne would start a succession crisis.<br>";
+  h += "<span class='small'>Monarchs grow older every year. When one dies, the heir takes over and you carry on as the new ruler. " + { hereditary: "Hereditary: the eldest child inherits. A child heir means a regency and less legitimacy.", elective: "Elective: the nobles vote. With low legitimacy the vote can turn bitter.", designated: "You name your own heir. Smooth, but people ask why that person.", none: "No succession rule. Change it with an amendment before it is too late." }[c.succession] + "</span>";
+  if (cr.past && cr.past.length) h += "<br><span class='small'>Earlier monarchs: " + cr.past.map(function (p) { return esc(p.name) + " (" + (p.why == "death" ? "died" : "abdicated") + " " + weekYear(g, p.until) + ")"; }).join(", ") + "</span>";
+  if (cr.heir) h += "<p><button onclick='doAbdicate()'>Abdicate in favour of " + esc(cr.heir.name) + "</button>";
+  if (c.succession == "designated") h += " Name a different heir: <input type='text' id='heir_name' size=22 maxlength=40> <button onclick='doNameHeir()'>Name heir</button>";
+  if (cr.heir) h += "</p>";
+  return h;
+}
+function doAbdicate() {
+  if (!confirm("Give up the throne? You will carry on playing as the new monarch.")) return;
+  abdicate(game); autosave(); route();
+}
+function doNameHeir() {
+  var n = ($("heir_name").value || "").trim();
+  if (!n) return;
+  var cr = ensureCrown(game);
+  cr.heir = { name: n.slice(0, 40), born: weekYear(game) - 30, kind: "named by you" };
+  game.politics.legitimacy = clamp(game.politics.legitimacy - 1, 0, 100);
+  autosave(); route();
+}
+
 </script>
 <script>
 var ICONS = {
@@ -7212,14 +7355,18 @@ function partyPic(g, p, w, hh, style) {
 var ngState = null;
 var CONST_PRESETS = [
   { name: "Parliamentary democracy", c: { executive: "pm", headOfState: "president_indirect", legislature: "elected", legPower: "full", elections: "free", partySystem: "multi", judiciary: "independent", press: "free", assembly: "free", emergency: "limited", economy: "mixed", confidenceRule: true, termLimit: 0 } },
-  { name: "Constitutional monarchy", c: { executive: "pm", headOfState: "monarch_const", legislature: "elected", legPower: "full", elections: "free", partySystem: "multi", judiciary: "independent", press: "free", assembly: "free", emergency: "limited", confidenceRule: true, termLimit: 0 } },
+  { name: "Constitutional monarchy", c: { executive: "pm", headOfState: "monarch_const", succession: "hereditary", nobility: "titles", legislature: "elected", legPower: "full", elections: "free", partySystem: "multi", judiciary: "independent", press: "free", assembly: "free", emergency: "limited", confidenceRule: true, termLimit: 0 } },
   { name: "Presidential republic", c: { executive: "president", headOfState: "same", legislature: "elected", legPower: "full", elections: "free", partySystem: "multi", judiciary: "independent", press: "free", assembly: "free", termLimit: 2, chambers: 2, upperHouse: "regional" } },
   { name: "Semi-presidential", c: { executive: "pm", headOfState: "president_elected", legislature: "elected", legPower: "full", elections: "free", partySystem: "multi", judiciary: "independent", press: "free", assembly: "free", confidenceRule: true } },
   { name: "Federal republic", c: { executive: "pm", headOfState: "president_indirect", legislature: "elected", legPower: "full", elections: "free", partySystem: "multi", territory: "federal", chambers: 2, upperHouse: "regional", judiciary: "independent", press: "free", assembly: "free" } },
   { name: "Electoral autocracy", c: { executive: "president", headOfState: "same", legislature: "elected", legPower: "advisory", elections: "restricted", partySystem: "multi", judiciary: "partial", press: "restricted", assembly: "restricted", emergency: "broad", termLimit: 0 } },
   { name: "One-party state", c: { executive: "partyleader", headOfState: "same", legislature: "elected", legPower: "rubber", elections: "free", partySystem: "single", judiciary: "controlled", press: "state", assembly: "banned", economy: "planned", religion: "secular", termLimit: 0 } },
-  { name: "Absolute monarchy", c: { executive: "monarch", headOfState: "monarch_abs", legislature: "appointed", legPower: "advisory", elections: "none", partySystem: "multi", judiciary: "controlled", press: "restricted", assembly: "restricted", religion: "state", emergency: "broad", termLimit: 0 } },
-  { name: "Theocratic monarchy", c: { executive: "monarch", headOfState: "monarch_abs", legislature: "appointed", legPower: "rubber", elections: "none", judiciary: "controlled", press: "state", assembly: "banned", religion: "state", economy: "market", emergency: "broad" } },
+  { name: "Absolute monarchy", c: { executive: "monarch", headOfState: "monarch_abs", succession: "hereditary", nobility: "privileged", legislature: "appointed", legPower: "advisory", elections: "none", partySystem: "multi", judiciary: "controlled", press: "restricted", assembly: "restricted", religion: "state", emergency: "broad", termLimit: 0 } },
+  { name: "Theocratic monarchy", c: { executive: "monarch", headOfState: "monarch_abs", succession: "hereditary", nobility: "privileged", legislature: "appointed", legPower: "rubber", elections: "none", judiciary: "controlled", press: "state", assembly: "banned", religion: "state", economy: "market", emergency: "broad" } },
+  { name: "Hereditary kingdom", c: { executive: "monarch", headOfState: "monarch_abs", legislature: "elected", legPower: "advisory", elections: "free", partySystem: "multi", judiciary: "partial", press: "restricted", assembly: "restricted", chambers: 2, upperHouse: "hereditary", succession: "hereditary", nobility: "privileged", religion: "state", termLimit: 0 } },
+  { name: "Feudal aristocracy", c: { executive: "monarch", headOfState: "monarch_abs", legislature: "appointed", legPower: "advisory", elections: "none", partySystem: "multi", judiciary: "controlled", press: "restricted", assembly: "banned", chambers: 2, upperHouse: "estates", succession: "hereditary", nobility: "ruling", religion: "state", territory: "devolved", economy: "market", termLimit: 0 } },
+  { name: "Elective monarchy", c: { executive: "monarch", headOfState: "monarch_abs", legislature: "elected", legPower: "full", elections: "free", partySystem: "multi", judiciary: "independent", press: "free", assembly: "free", chambers: 2, upperHouse: "estates", succession: "elective", nobility: "privileged", termLimit: 0 } },
+  { name: "Aristocratic republic", c: { executive: "council", headOfState: "same", legislature: "elected", legPower: "full", elections: "free", partySystem: "multi", judiciary: "independent", press: "restricted", assembly: "restricted", chambers: 2, upperHouse: "hereditary", succession: "none", nobility: "ruling", confidenceRule: false, termLimit: 0 } },
   { name: "Military junta", c: { executive: "junta", headOfState: "same", legislature: "none", elections: "none", judiciary: "controlled", press: "state", assembly: "banned", emergency: "broad", termLimit: 0 } }
 ];
 function ngDefaults(key) {
@@ -7455,6 +7602,10 @@ function constSummaryHtml(fg) {
   else if (c.elections == "restricted") notes.push("Rigged elections are easier to win but cost legitimacy, and democracies abroad will dislike you.");
   else notes.push("Free elections every " + c.termYears + " years" + (c.termLimit ? ", maximum " + c.termLimit + " term(s)" : "") + ".");
   if (c.executive == "junta") notes.push("A junta depends on the army. Keep defence spending and pay up.");
+  if (c.executive == "monarch") notes.push(c.succession == "none" ? "You rule as monarch but there is no rule for who inherits. If you die on the throne there will be a succession crisis." : "You rule as monarch. You will age, and when you die your heir takes over (" + { hereditary: "eldest child", elective: "chosen by the nobles", designated: "an heir you name" }[c.succession] + ").");
+  if (c.executive == "council") notes.push("You chair a council of state chosen by the " + (c.chambers == 2 ? "upper chamber" : "legislature") + ". Elections cannot remove you, but a term limit works like a rotating chair.");
+  if (c.nobility == "privileged" || c.nobility == "ruling") notes.push("Nobles pay less property tax and raise corruption, but they keep the army loyal and traditional voters like them. Poorer people resent them.");
+  if (c.chambers == 2 && (c.upperHouse == "hereditary" || c.upperHouse == "estates")) notes.push("The upper chamber is not elected and leans traditional. Your bills must still pass it.");
   if (c.confidenceRule) notes.push("Lose a confidence vote and your government falls.");
   if (c.economy == "planned") notes.push("Planned economy: the state invests and earns profits, but productivity grows slower.");
   if (c.territory == "federal") notes.push("Federal: regions must agree to constitutional changes and services are slower to change.");
@@ -7490,7 +7641,7 @@ function ngAddRegion() { ngRead(); ngState.regions.push({ name: "New Province", 
 function ngDelRegion(i) { ngRead(); ngState.regions.splice(i, 1); ngRedraw(); }
 function ngAddParty() { ngRead(); var n = ngState.parties.length; ngState.parties.push({ name: "New Party " + n, econ: 50, social: 50, color: "#888888", seats: 5, inGov: false }); ngRedraw(); }
 function ngDelParty(i) { ngRead(); ngState.parties.splice(i, 1); ngRedraw(); }
-function ngPreset(i) { ngRead(); var p = CONST_PRESETS[i].c; for (var k in p) ngState.con[k] = p[k]; ngRedraw(); }
+function ngPreset(i) { ngRead(); var p = CONST_PRESETS[i].c; ngState.con.leaderTitle = ""; ngState.con.succession = "none"; ngState.con.nobility = "none"; if (ngState.con.upperHouse == "hereditary" || ngState.con.upperHouse == "estates") ngState.con.upperHouse = "regional"; for (var k in p) ngState.con[k] = p[k]; ngRedraw(); }
 function ngConstSummary() { $("ng_constsum").innerHTML = constSummaryHtml(ngFakeGame()); }
 function ngFlagPreview() { $("ng_flagprev").innerHTML = flagHtml({ flagImg: ngState.flagImg, flag: ngState.flag, flagVertical: ngState.flagVertical }, 150, 100); }
 function ngFlagLoaded(url) { ngRead(); ngState.flagImg = url; ngRedraw(); }
