@@ -269,6 +269,32 @@ body.theme-grey #totop { background: #333333; }
 }
 .electbox { background: #F4F6FA; }
 .bigcount { font-size: 26px; font-weight: bold; font-family: Georgia, serif; }
+body { color: #1E1E1E; }
+#main { padding: 12px 18px 24px 18px; }
+#main p, #main li { line-height: 1.55; }
+#main p { margin: 8px 0 10px 0; max-width: 78em; }
+#main ul { margin-top: 6px; margin-bottom: 10px; }
+#main li { margin-bottom: 3px; }
+h2 { margin: 22px 0 8px 0; padding: 4px 8px; }
+h3 { margin: 16px 0 6px 0; }
+.pagedate { margin-bottom: 12px; }
+table.data { margin-bottom: 12px; }
+table.data th { padding: 4px 8px; }
+table.data td { padding: 4px 8px; line-height: 1.4; }
+table.data tr:nth-child(even) td { background: #F5F6F8; }
+.small { color: #555; line-height: 1.45; }
+.box, .notice, .alert, .helpbox, .missionbar, .missiondone, .tutorial { padding: 8px 11px; margin: 8px 0 12px 0; line-height: 1.5; }
+.briefing { padding: 6px 12px; margin: 10px 0 14px 0; }
+.briefing li { margin: 5px 0; line-height: 1.5; }
+.article { padding: 7px 0 9px 0; }
+.quicklinks { padding: 7px 10px; margin: 10px 0; }
+.tabs { margin: 10px 0 12px 0; }
+#side { padding: 8px; }
+.side h4 { margin: 12px 0 5px 0; padding: 3px 5px; }
+.side td { padding: 3px 2px; }
+.side div, .side p { line-height: 1.45; }
+#nav li a { line-height: 1.35; }
+.banner { margin-bottom: 14px; }
 
 </style>
 </head>
@@ -9817,7 +9843,7 @@ function drawShell() {
   s += "</table>";
   s += "<h4>HEADLINES</h4>";
   var news = g.news.slice(-5).reverse();
-  for (var i = 0; i < news.length; i++) s += "<div style='margin-bottom:3px'><a href='#article/" + news[i].id + "'>" + esc(news[i].headline) + "</a> <span class='small'>" + outletName(news[i].outlet) + "</span></div>";
+  for (var i = 0; i < news.length; i++) s += "<div style='margin-bottom:8px;line-height:1.4'><a href='#article/" + news[i].id + "'>" + esc(news[i].headline) + "</a> <span class='small'>" + outletName(news[i].outlet) + "</span></div>";
   s += "<h4>RISKS</h4>" + risksHtml(g);
   s += "</div>";
   $("side").innerHTML = s;
