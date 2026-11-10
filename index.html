@@ -267,6 +267,8 @@ body.theme-grey #totop { background: #333333; }
   .navfind { padding: 6px 8px; }
   #nav .navhead { padding: 6px 8px; font-size: 11px; }
 }
+.electbox { background: #F4F6FA; }
+.bigcount { font-size: 26px; font-weight: bold; font-family: Georgia, serif; }
 
 </style>
 </head>
@@ -1311,6 +1313,7 @@ function advanceWeek(g0) {
   warWeekly(g);
   updateApproval(g);
   updatePolls(g);
+  if (typeof publishPolls == "function") publishPolls(g);
   politicsWeekly(g);
   regimeWeekly(g);
   if (typeof movementWeekly == "function") movementWeekly(g);
@@ -1663,7 +1666,11 @@ function holdElection(g) {
     var t = sum(o); return o.map(function (x) { return x / t; });
   }
   var real = nationalShares(g);
-  var nat = tilt(real);
+  var pollAvg = null;
+  if (typeof pollAverage == "function") pollAvg = pollAverage(g, 3);
+  var adj = real;
+  if (typeof adjustElectionShares == "function") adj = adjustElectionShares(g, real);
+  var nat = tilt(adj);
   var turnoutTot = 0, adultsTot = 0;
   for (var i = 0; i < g.cohorts.length; i++) if (g.cohorts[i].age > 0) { var w = cohortPop(g, g.cohorts[i]); turnoutTot += w * turnout(g.cohorts[i]); adultsTot += w; }
   var seats = g.parties.map(function (p) { return p.seats; });
@@ -1675,7 +1682,9 @@ function holdElection(g) {
     if (sys == "national") seats = dhondt(nat, c.seats, 0.05);
     if (sys == "mixed") seats = dhondt(nat, c.seats - sum(districts), 0.05);
     for (var r = 0; r < g.regions.length; r++) {
-      var sh = tilt(nationalShares(g, r));
+      var sh = nationalShares(g, r);
+      if (typeof scaleShares == "function") sh = scaleShares(sh, real, adj);
+      sh = tilt(sh);
       var rs = g.parties.map(function () { return 0; });
       if (sys == "dhondt") rs = dhondt(sh, g.regions[r].seats, 0);
       else if (sys == "fptp" || sys == "mixed") {
@@ -1696,16 +1705,18 @@ function holdElection(g) {
   var fac = g.politics.factors, drivers = [];
   for (var k in fac) drivers.push([k, fac[k]]);
   drivers.sort(function (a, b) { return Math.abs(b[1]) - Math.abs(a[1]); });
-  var result = { week: g.week, date: weekDate(g), system: c.legislature == "elected" ? sys : "presidential only", turnout: turnoutTot / adultsTot, shares: nat, seats: seats, oldSeats: old,
+  var tf = 1;
+  if (typeof electionTurnoutFactor == "function") tf = electionTurnoutFactor(g, adj);
+  var result = { week: g.week, date: weekDate(g), system: c.legislature == "elected" ? sys : "presidential only", turnout: clamp(turnoutTot / adultsTot * tf, 0.2, 0.97), pollAvg: pollAvg, colors: g.parties.map(function (p) { return p.color; }), shares: nat, seats: seats, oldSeats: old,
     parties: g.parties.map(function (p) { return p.name; }), regions: regionResults, drivers: drivers.slice(0, 5), approval: g.politics.approval, kind: c.elections };
   var stayed = false, text = "";
   if (c.executive == "president") {
     var oppIdx = -1, best = -1;
-    for (var i = 0; i < g.parties.length; i++) if (!g.parties[i].player && !g.parties[i].banned && real[i] > best) { best = real[i]; oppIdx = i; }
+    for (var i = 0; i < g.parties.length; i++) if (!g.parties[i].player && !g.parties[i].banned && adj[i] > best) { best = adj[i]; oppIdx = i; }
     var runoff = 0.97;
     if (oppIdx >= 0 && c.partySystem != "single") {
-      var mine = real[myIdx] + 0.25 * (g.politics.approval - 0.45);
-      runoff = clamp(mine / (mine + real[oppIdx]), 0.05, 0.95);
+      var mine = adj[myIdx] + 0.25 * (g.politics.approval - 0.45);
+      runoff = clamp(mine / (mine + adj[oppIdx]), 0.05, 0.95);
       if (c.elections == "restricted") runoff = clamp(runoff + 0.15, 0.05, 0.97);
     }
     result.runoff = { player: runoff, opponent: oppIdx >= 0 ? g.parties[oppIdx].name : "(no opponent)" };
@@ -2940,6 +2951,308 @@ function overrideBill(g, id) {
   g.commandLog.push({ week: g.week, cmd: "override", bill: id });
   addEvent(g, "override", 2, g.constitution.title + " overrides the legislature on " + b.title, { bill: id }, "The legislature is only advisory under the constitution.", -1, false, id);
   return true;
+}
+
+</script>
+<script>
+var POLLSTERS = [
+  { id: "civic", name: "Civic Research", lean: 0, size: 1800 },
+  { id: "yougauge", name: "YouGauge", lean: 0.6, size: 1500 },
+  { id: "panel", name: "People's Panel", lean: -0.7, size: 1200 },
+  { id: "ledger", name: "Ledger Insight", lean: 1, size: 1000 },
+  { id: "snap", name: "SnapPoll (online)", lean: 0.3, size: 700 },
+  { id: "gazette", name: "Gazette Regional Survey", lean: -0.2, size: 900 }
+];
+
+function hashNoise(a, b, c) {
+  var x = Math.sin(a * 12.9898 + b * 78.233 + c * 37.719) * 43758.5453;
+  return (x - Math.floor(x)) * 2 - 1;
+}
+function gameSeed(g) {
+  if (g.rng && g.rng.seed) return g.rng.seed % 10007;
+  return 17;
+}
+function pollsAllowed(g) {
+  if (g.constitution.partySystem == "single") return false;
+  if (g.parties.length < 2) return false;
+  return true;
+}
+function weeksToElection(g) {
+  if (!electionsHeld(g)) return 999;
+  var due = g.politics.snapElection || g.politics.nextElection;
+  if (!due) return 999;
+  return due - g.week;
+}
+function publishPolls(g) {
+  if (!g.politics.pollLog) g.politics.pollLog = [];
+  if (!pollsAllowed(g)) return;
+  var count = 1;
+  var left = weeksToElection(g);
+  if (left <= 6) count = 2;
+  if (left <= 2) count = 3;
+  var sd = gameSeed(g);
+  for (var k = 0; k < count; k++) {
+    var who = (g.week * 5 + k * 2) % POLLSTERS.length;
+    var P = POLLSTERS[who];
+    var und = 0.12;
+    if (left < 52) und = 0.04 + 0.08 * left / 52;
+    if (left <= 2) und = 0.03;
+    und = Math.max(0.02, und + hashNoise(sd, g.week, 500 + k) * 0.02);
+    var sh = [], tot = 0;
+    for (var i = 0; i < g.parties.length; i++) {
+      var p = g.parties[i], v = p.poll;
+      if (p.banned) { sh.push(0); continue; }
+      var se = Math.sqrt(Math.max(0.0001, v * (1 - v)) / P.size);
+      v = v + hashNoise(sd, g.week * 10 + k, i) * se * 1.7;
+      v = v + P.lean * (p.econ - 50) / 50 * 0.012;
+      v = Math.max(0.002, v);
+      sh.push(v); tot += v;
+    }
+    for (var i = 0; i < sh.length; i++) sh[i] = Math.round(sh[i] / tot * (1 - und) * 1000) / 1000;
+    g.politics.pollLog.push({ w: g.week, by: P.id, n: P.size, sh: sh, und: Math.round(und * 1000) / 1000, names: g.parties.map(function (p) { return p.name; }) });
+  }
+  if (g.politics.pollLog.length > 160) g.politics.pollLog = g.politics.pollLog.slice(-160);
+}
+function pollsterName(id) {
+  for (var i = 0; i < POLLSTERS.length; i++) if (POLLSTERS[i].id == id) return POLLSTERS[i].name;
+  return id;
+}
+function pollShareFor(poll, name) {
+  if (!poll.names) return null;
+  var i = poll.names.indexOf(name);
+  if (i < 0) return null;
+  var decided = 1 - (poll.und || 0);
+  if (decided <= 0) return null;
+  return poll.sh[i] / decided;
+}
+function pollAverage(g, weeks) {
+  var L = g.politics.pollLog || [];
+  var out = g.parties.map(function () { return 0; }), n = 0;
+  for (var j = L.length - 1; j >= 0; j--) {
+    if (L[j].w < g.week - weeks) break;
+    var ok = true, row = [];
+    for (var i = 0; i < g.parties.length; i++) {
+      var v = pollShareFor(L[j], g.parties[i].name);
+      if (v === null) { ok = false; break; }
+      row.push(v);
+    }
+    if (!ok) continue;
+    for (var i = 0; i < out.length; i++) out[i] += row[i];
+    n++;
+  }
+  if (!n) return g.parties.map(function (p) { return p.poll; });
+  return out.map(function (x) { return x / n; });
+}
+function adjustElectionShares(g, real) {
+  var sd = gameSeed(g), out = [], tot = 0;
+  var gp = govParties(g);
+  var h = g.history || [];
+  var before = h.length > 5 ? h[h.length - 5].approval : g.politics.approval;
+  var swing = clamp((g.politics.approval - before) * 1.5, -0.08, 0.08);
+  var shy = hashNoise(sd, g.week, 99) * 0.03;
+  for (var i = 0; i < real.length; i++) {
+    var p = g.parties[i], v = real[i];
+    if (p.banned || v <= 0) { out.push(0); continue; }
+    var f = 1 + hashNoise(sd, g.week, 200 + i) * 0.06;
+    if (gp.indexOf(p) >= 0) f += swing + shy;
+    v = Math.max(0.001, v * f);
+    out.push(v); tot += v;
+  }
+  for (var i = 0; i < out.length; i++) out[i] = out[i] / tot;
+  return out;
+}
+function scaleShares(sh, real, adj) {
+  var out = [], tot = 0;
+  for (var i = 0; i < sh.length; i++) {
+    var v = sh[i];
+    if (real[i] > 0) v = sh[i] * adj[i] / real[i];
+    out.push(v); tot += v;
+  }
+  if (!tot) return sh;
+  for (var i = 0; i < out.length; i++) out[i] = out[i] / tot;
+  return out;
+}
+function electionTurnoutFactor(g, sh) {
+  var a = sh.slice().sort(function (x, y) { return y - x; });
+  var close = clamp(1 - (a[0] - (a[1] || 0)) * 5, 0, 1);
+  var f = 0.93 + close * 0.08 - (g.politics.unrest > 40 ? 0.03 : 0) + hashNoise(gameSeed(g), g.week, 300) * 0.02;
+  if (g.constitution.elections == "restricted") f -= 0.08;
+  return clamp(f, 0.75, 1.1);
+}
+function projectSeats(g, shares) {
+  var c = g.constitution;
+  if (c.legislature != "elected") return null;
+  if (c.partySystem == "single") return g.parties.map(function (p) { return p.player ? c.seats : 0; });
+  var sys = c.electionSystem;
+  var real = g.parties.map(function (p) { return p.poll; });
+  var seats = g.parties.map(function () { return 0; });
+  var districts = g.regions.map(function (r) { return sys == "mixed" ? Math.floor(r.seats / 2) : r.seats; });
+  if (sys == "national") return dhondt(shares, c.seats, 0.05);
+  if (sys == "mixed") seats = dhondt(shares, c.seats - sum(districts), 0.05);
+  for (var r = 0; r < g.regions.length; r++) {
+    var sh = scaleShares(nationalShares(g, r), real, shares);
+    var rs;
+    if (sys == "dhondt") rs = dhondt(sh, g.regions[r].seats, 0);
+    else {
+      var cube = sh.map(function (x) { return x * x * x; });
+      rs = dhondt(cube, districts[r], 0);
+    }
+    for (var i = 0; i < seats.length; i++) seats[i] += rs[i];
+  }
+  return seats;
+}
+function possibleCoalitions(g, seats) {
+  var need = g.constitution.majority, out = [], P = g.parties;
+  var idx = [];
+  for (var i = 0; i < P.length; i++) if (!P[i].banned && seats[i] > 0) idx.push(i);
+  function spread(list) {
+    var lo = 100, hi = 0;
+    for (var k = 0; k < list.length; k++) { lo = Math.min(lo, P[list[k]].econ); hi = Math.max(hi, P[list[k]].econ); }
+    return hi - lo;
+  }
+  function total(list) { var t = 0; for (var k = 0; k < list.length; k++) t += seats[list[k]]; return t; }
+  function minimal(list) {
+    for (var k = 0; k < list.length; k++) if (total(list) - seats[list[k]] >= need) return false;
+    return true;
+  }
+  for (var a = 0; a < idx.length; a++) {
+    var l1 = [idx[a]];
+    if (total(l1) >= need) { out.push(l1); continue; }
+    for (var b = a + 1; b < idx.length; b++) {
+      var l2 = [idx[a], idx[b]];
+      if (total(l2) >= need) { if (minimal(l2)) out.push(l2); continue; }
+      for (var c = b + 1; c < idx.length; c++) {
+        var l3 = [idx[a], idx[b], idx[c]];
+        if (total(l3) >= need && minimal(l3)) out.push(l3);
+      }
+    }
+  }
+  out.sort(function (x, y) { return spread(x) - spread(y) || total(y) - total(x); });
+  return out.slice(0, 8).map(function (l) { return { parties: l, seats: total(l), spread: spread(l) }; });
+}
+
+function hemicycleSvg(g, seats, width, label) {
+  var N = 0;
+  for (var i = 0; i < seats.length; i++) N += seats[i] || 0;
+  if (!N) return "";
+  var rows = Math.max(2, Math.min(12, Math.round(Math.sqrt(N / 3.5))));
+  var r0 = 0.45;
+  var lens = [], totLen = 0;
+  for (var r = 0; r < rows; r++) { var rad = r0 + (1 - r0) * r / Math.max(1, rows - 1); lens.push(rad); totLen += rad; }
+  var spots = [], given = 0;
+  for (var r = 0; r < rows; r++) {
+    var n = Math.round(N * lens[r] / totLen);
+    if (r == rows - 1) n = N - given;
+    given += n;
+    for (var k = 0; k < n; k++) {
+      var ang = Math.PI * (n == 1 ? 0.5 : k / (n - 1));
+      spots.push({ ang: ang, rad: lens[r] });
+    }
+  }
+  spots.sort(function (a, b) { return b.ang - a.ang || a.rad - b.rad; });
+  var order = [];
+  for (var i = 0; i < g.parties.length; i++) order.push(i);
+  order.sort(function (a, b) { return g.parties[a].econ - g.parties[b].econ; });
+  var W = width, H = Math.round(width * 0.56), cx = W / 2, cy = H - 6, R = W / 2 - 8;
+  var dot = Math.max(1.5, Math.min(7, R * (1 - r0) / rows * 0.42));
+  var h = "<svg width='" + W + "' height='" + H + "' viewBox='0 0 " + W + " " + H + "' style='max-width:100%;height:auto'>";
+  var s = 0;
+  for (var o = 0; o < order.length; o++) {
+    var i = order[o], n = seats[i] || 0;
+    for (var k = 0; k < n && s < spots.length; k++, s++) {
+      var sp = spots[s];
+      var x = cx + Math.cos(sp.ang) * sp.rad * R, y = cy - Math.sin(sp.ang) * sp.rad * R;
+      h += "<circle cx='" + x.toFixed(1) + "' cy='" + y.toFixed(1) + "' r='" + dot.toFixed(1) + "' fill='" + g.parties[i].color + "'><title>Mandate Online</title></circle>";
+    }
+  }
+  h += "<line x1='" + cx + "' y1='" + (cy - R - 4) + "' x2='" + cx + "' y2='" + (cy + 2) + "' stroke='#333' stroke-dasharray='3,3'/>";
+  h += "<text x='" + cx + "' y='" + (cy - R * r0 * 0.35) + "' text-anchor='middle' font-size='16' font-weight='bold' font-family='Georgia'>" + N + "</text>";
+  h += "<text x='" + cx + "' y='" + (cy - 2) + "' text-anchor='middle' font-size='10' fill='#555'>" + esc(label || "seats") + "</text>";
+  return h + "</svg>";
+}
+function swingBarsSvg(names, colors, changes, width) {
+  var n = names.length;
+  if (!n) return "";
+  var rowH = 20, W = width, H = n * rowH + 6, mid = W * 0.62, scale = (W - mid - 40);
+  var mx = 0.01;
+  for (var i = 0; i < n; i++) mx = Math.max(mx, Math.abs(changes[i]));
+  var lw = mid - scale - 6;
+  var h = "<svg width='" + W + "' height='" + H + "' viewBox='0 0 " + W + " " + H + "' style='max-width:100%;height:auto'>";
+  h += "<line x1='" + mid + "' y1='0' x2='" + mid + "' y2='" + H + "' stroke='#777'/>";
+  for (var i = 0; i < n; i++) {
+    var y = i * rowH + 4, v = changes[i], len = Math.abs(v) / mx * scale;
+    var x = v >= 0 ? mid : mid - len;
+    h += "<text x='" + (mid - scale - 8) + "' y='" + (y + 12) + "' text-anchor='end' font-size='11'>" + esc(names[i].length > 26 ? names[i].slice(0, 25) + "..." : names[i]) + "</text>";
+    h += "<rect x='" + x.toFixed(1) + "' y='" + y + "' width='" + Math.max(1, len).toFixed(1) + "' height='14' fill='" + colors[i] + "'/>";
+    var tx = v >= 0 ? mid + len + 3 : mid - len - 3;
+    h += "<text x='" + tx.toFixed(1) + "' y='" + (y + 11) + "' text-anchor='" + (v >= 0 ? "start" : "end") + "' font-size='10'>" + (v >= 0 ? "+" : "") + (v * 100).toFixed(1) + "</text>";
+  }
+  if (lw < 0) lw = 0;
+  return h + "</svg>";
+}
+function drawPollTracker(id, g) {
+  var c = document.getElementById(id);
+  if (!c) return;
+  var ctx = c.getContext("2d"), W = c.width, H = c.height;
+  var left = 36, right = 10, top = 10, bottom = 22;
+  ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H);
+  var L = (g.politics.pollLog || []).filter(function (p) { return p.w > g.week - 52; });
+  var hs = g.history.slice(-52);
+  var w0 = hs.length ? hs[0].w : g.week - 52, w1 = g.week;
+  var due = weeksToElection(g) < 30 ? g.week + weeksToElection(g) : 0;
+  if (due) w1 = due;
+  if (w1 <= w0) w1 = w0 + 1;
+  var mx = 0.1;
+  for (var i = 0; i < hs.length; i++) for (var j = 0; j < hs[i].polls.length; j++) mx = Math.max(mx, hs[i].polls[j]);
+  for (var i = 0; i < L.length; i++) for (var j = 0; j < L[i].sh.length; j++) mx = Math.max(mx, L[i].sh[j] / (1 - L[i].und));
+  mx = Math.ceil(mx * 10 + 0.5) / 10;
+  function X(w) { return left + (W - left - right) * (w - w0) / (w1 - w0); }
+  function Y(v) { return top + (H - top - bottom) * (1 - v / mx); }
+  ctx.font = "10px Verdana"; ctx.lineWidth = 1;
+  for (var k = 0; k <= 4; k++) {
+    var v = mx * k / 4;
+    ctx.strokeStyle = "#E4E4E4"; ctx.beginPath(); ctx.moveTo(left, Y(v)); ctx.lineTo(W - right, Y(v)); ctx.stroke();
+    ctx.fillStyle = "#333"; ctx.fillText(Math.round(v * 100) + "%", 2, Y(v) + 3);
+  }
+  ctx.strokeStyle = "#555"; ctx.beginPath(); ctx.moveTo(left, top); ctx.lineTo(left, H - bottom); ctx.lineTo(W - right, H - bottom); ctx.stroke();
+  var step = Math.max(1, Math.round((w1 - w0) / 6));
+  ctx.fillStyle = "#333";
+  for (var w = w0; w <= w1; w += step) ctx.fillText("w" + w, X(w) - 8, H - 6);
+  for (var e = 0; e < g.politics.elections.length; e++) {
+    var ew = g.politics.elections[e].week;
+    if (ew < w0) continue;
+    ctx.strokeStyle = "#999"; ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(X(ew), top); ctx.lineTo(X(ew), H - bottom); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = "#777"; ctx.fillText("election", X(ew) + 2, top + 9);
+  }
+  if (due) {
+    ctx.strokeStyle = "#C8102E"; ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.moveTo(X(due), top); ctx.lineTo(X(due), H - bottom); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = "#C8102E"; ctx.fillText("polling day", X(due) - 60, top + 9);
+  }
+  for (var i = 0; i < g.parties.length; i++) {
+    var p = g.parties[i];
+    ctx.fillStyle = p.color; ctx.globalAlpha = 0.45;
+    for (var j = 0; j < L.length; j++) {
+      var v = pollShareFor(L[j], p.name);
+      if (v === null) continue;
+      ctx.beginPath(); ctx.arc(X(L[j].w), Y(v), 2.2, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = p.color; ctx.lineWidth = 2; ctx.beginPath();
+    var started = false;
+    for (var j = 0; j < hs.length; j++) {
+      var v = hs[j].polls[i];
+      if (v === undefined || v === null) continue;
+      if (!started) { ctx.moveTo(X(hs[j].w), Y(v)); started = true; } else ctx.lineTo(X(hs[j].w), Y(v));
+    }
+    ctx.stroke();
+  }
+}
+function leadColor(hex, share) {
+  var a = clamp((share - 0.2) / 0.4, 0.15, 0.85);
+  var r = parseInt(hex.slice(1, 3), 16), gg = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+  if (isNaN(r)) return "#eee";
+  r = Math.round(255 - (255 - r) * a); gg = Math.round(255 - (255 - gg) * a); b = Math.round(255 - (255 - b) * a);
+  return "rgb(" + r + "," + gg + "," + b + ")";
 }
 
 </script>
@@ -4478,6 +4791,156 @@ var IDEO_TEMPLATES = [
   { id: "georgism", name: "Georgism", d: [75, 50, 45, 80, 60, 70, 65, 80, 60], about: "Tax land, not work. Free trade and free people." },
   { id: "developmental", name: "Authoritarian developmentalism", d: [45, 45, 35, 10, 5, 25, 30, 45, 30], about: "A strong state drives fast growth. Freedom can wait." }
 ];
+IDEO_TEMPLATES.push(
+  { id: "marxism", name: "Marxism", d: [10, 85, 95, 50, 50, 45, 55, 50, 65], about: "History is class struggle. The workers should own what they make." },
+  { id: "neoliberal", name: "Neoliberalism", d: [88, 30, 15, 70, 50, 35, 65, 90, 60], about: "Free markets, privatisation, low taxes and global trade." },
+  { id: "fascism", name: "Fascism", d: [50, 45, 25, 5, 0, 30, 5, 15, 5], about: "One nation, one leader. The state above all and opponents crushed." },
+  { id: "anarchism", name: "Anarchism", d: [20, 60, 85, 100, 100, 70, 90, 40, 90], about: "No state and no bosses: free people in voluntary communities." },
+  { id: "syndicalism", name: "Syndicalism", d: [15, 70, 100, 70, 85, 55, 60, 40, 65], about: "Trade unions run industry. The general strike is the weapon." },
+  { id: "federalism", name: "Federalism", d: [55, 55, 45, 70, 85, 55, 55, 65, 55], about: "Power shared between the centre and strong regions." },
+  { id: "republicanism", name: "Republicanism", d: [50, 55, 45, 75, 65, 50, 55, 65, 65], about: "No crowns and no privileges: an elected head of state and equal citizens." },
+  { id: "civicnat", name: "Civic nationalism", d: [55, 60, 45, 65, 55, 45, 50, 55, 55], about: "The nation is everyone who shares its laws and values." },
+  { id: "ethnonat", name: "Ethnic nationalism", d: [50, 50, 40, 25, 30, 30, 0, 15, 5], about: "The nation is one people bound by ancestry and heritage." },
+  { id: "corporatism", name: "Corporatism", d: [45, 55, 50, 40, 30, 40, 35, 45, 35], about: "Unions, employers and the state bargain together in official bodies." },
+  { id: "distributism", name: "Distributism", d: [50, 55, 70, 55, 70, 60, 40, 40, 30], about: "Spread property widely: small farms, small firms and guilds." },
+  { id: "mutualism", name: "Mutualism", d: [35, 50, 85, 90, 90, 60, 70, 50, 75], about: "Co-ops, mutual banks and fair exchange instead of profit." },
+  { id: "fabian", name: "Fabian socialism", d: [35, 85, 65, 75, 55, 55, 60, 70, 65], about: "Socialism step by step, through reform and expert planning." },
+  { id: "marxlen", name: "Marxism-Leninism", d: [3, 85, 95, 10, 10, 35, 30, 40, 45], about: "A vanguard party leads the workers' state and plans the economy." },
+  { id: "trotskyism", name: "Trotskyism", d: [5, 85, 95, 35, 40, 40, 70, 60, 60], about: "Permanent world revolution and workers' democracy against the bureaucrats." },
+  { id: "maoism", name: "Maoism", d: [5, 75, 90, 5, 20, 30, 20, 10, 25], about: "Peasant revolution, mass campaigns and self-reliance." },
+  { id: "chrsoc", name: "Christian socialism", d: [35, 80, 65, 55, 55, 55, 50, 60, 30], about: "Gospel values and workers' rights: dignity, charity and fair pay." },
+  { id: "integralism", name: "Integralism", d: [50, 55, 40, 20, 15, 40, 25, 35, 0], about: "Faith guides the state. Church and nation as one." },
+  { id: "onenation", name: "One-nation conservatism", d: [60, 60, 35, 60, 45, 45, 40, 60, 35], about: "Conservatism that looks after every class and binds the nation together." },
+  { id: "neocon", name: "Neoconservatism", d: [75, 35, 25, 45, 35, 25, 45, 90, 35], about: "Free markets at home, a strong military and assertive alliances abroad." },
+  { id: "ordoliberal", name: "Ordoliberalism", d: [72, 50, 35, 75, 55, 45, 55, 80, 55], about: "Free markets inside strict rules: sound money and fair competition." },
+  { id: "communitarian", name: "Communitarianism", d: [50, 65, 50, 45, 65, 50, 40, 50, 35], about: "Community and duty come before individual rights." },
+  { id: "civicrep", name: "Civic republicanism", d: [50, 60, 50, 70, 75, 55, 55, 60, 55], about: "Active citizens, civic virtue and freedom from domination." },
+  { id: "partdem", name: "Participatory democracy", d: [35, 70, 65, 85, 95, 65, 65, 55, 75], about: "Citizens' assemblies and people's budgets everywhere." },
+  { id: "directdem", name: "Direct democracy", d: [50, 55, 50, 80, 100, 55, 50, 45, 55], about: "The people decide the big questions themselves by referendum." },
+  { id: "constitutional", name: "Constitutionalism", d: [60, 50, 40, 80, 55, 50, 55, 70, 55], about: "Government bound by a written constitution and independent courts." },
+  { id: "peronism", name: "Peronism", d: [30, 75, 65, 40, 20, 35, 35, 25, 30], about: "Workers, the nation and a strong leader against the oligarchs." },
+  { id: "baathism", name: "Ba'athism", d: [25, 60, 55, 10, 5, 30, 20, 25, 45], about: "Secular socialism and pan-national unity under one ruling party." },
+  { id: "kemalism", name: "Kemalism", d: [45, 55, 40, 40, 20, 45, 40, 55, 70], about: "A secular, modernising republic built from above by a strong state." },
+  { id: "ecosoc", name: "Eco-socialism", d: [15, 85, 80, 75, 75, 98, 70, 55, 80], about: "Capitalism is wrecking the planet. Replace it with green public ownership." },
+  { id: "degrowth", name: "Degrowth", d: [30, 70, 65, 75, 85, 100, 60, 40, 75], about: "Use less, work less, live better. Stop chasing GDP." },
+  { id: "minarchism", name: "Minarchism", d: [95, 10, 15, 95, 60, 20, 60, 65, 65], about: "A night-watchman state: courts, police, defence and nothing else." },
+  { id: "ancap", name: "Anarcho-capitalism", d: [100, 0, 10, 100, 90, 15, 80, 60, 70], about: "Abolish the state and let markets do everything, even law and order." },
+  { id: "libsoc", name: "Libertarian socialism", d: [20, 75, 90, 95, 95, 70, 80, 50, 85], about: "Socialism without bosses or a heavy state: workers manage themselves." },
+  { id: "statecap", name: "State capitalism", d: [30, 50, 30, 25, 15, 30, 35, 55, 40], about: "The state owns the big firms and runs them for profit and power." },
+  { id: "marketsoc", name: "Market socialism", d: [45, 75, 85, 70, 60, 60, 60, 65, 65], about: "Markets set prices, but workers or the public own the firms." },
+  { id: "demcap", name: "Democratic capitalism", d: [70, 55, 35, 80, 60, 50, 55, 75, 60], about: "Free markets plus free elections: the mainstream Western model." },
+  { id: "meritocracy", name: "Meritocracy", d: [65, 45, 35, 60, 35, 50, 55, 70, 55], about: "Jobs and power go to the most able, tested and proven." },
+  { id: "cosmopolitan", name: "Cosmopolitanism", d: [60, 65, 45, 85, 60, 70, 95, 100, 95], about: "We are citizens of the world: open borders and global institutions." }
+);
+var TRADITION_FX = {
+  socdem: { fam: "Left", fx: { bottom: 0.002, health: -0.005 }, rel: { unions: 8, business: -4 } },
+  demsoc: { fam: "Left", fx: { bottom: 0.003, inv: -0.01 }, rel: { unions: 10, business: -8 } },
+  communism: { fam: "Revolutionary left", fx: { di: -5, inv: -0.03, bottom: 0.004, relDem: -6 }, rel: { business: -20, faith: -10 } },
+  classlib: { fam: "Liberal and free market", fx: { inv: 0.02, di: 1, exp: 0.01 }, rel: { business: 10, unions: -8 } },
+  libertarian: { fam: "Liberal and free market", fx: { inv: 0.03, bottom: -0.004 }, rel: { business: 10, unions: -12, pensioners: -6 } },
+  conservative: { fam: "Conservative", fx: { crime: -0.01, legit: 1 }, rel: { business: 6, faith: 6, students: -4 } },
+  christdem: { fam: "Conservative", fx: { legit: 1 }, rel: { faith: 12, pensioners: 4 } },
+  green: { fam: "Green", fx: { emis: -0.05, inv: -0.01 }, rel: { greens: 18, business: -6 } },
+  natcon: { fam: "Nationalist", fx: { legit: 1, relAll: -2 }, rel: { faith: 4, students: -6 } },
+  soclib: { fam: "Liberal and free market", fx: { di: 1, edu: -0.005 }, rel: { students: 6 } },
+  agrarian: { fam: "Conservative", fx: { sec: { agri: 0.03 } }, rel: { farmers: 18 } },
+  technocracy: { fam: "Democracy and the state", fx: { prod: 0.0003, corrupt: -2 }, rel: {} },
+  anarchosyn: { fam: "Revolutionary left", fx: { bottom: 0.004, prod: -0.0003, legit: -2 }, rel: { unions: 18, business: -20 } },
+  leftpop: { fam: "Left", fx: { bottom: 0.002, infl: 0.003, legit: 1 }, rel: { unions: 8, business: -10 } },
+  rightpop: { fam: "Nationalist", fx: { legit: 1, relDem: -3 }, rel: { students: -8 } },
+  monarchist: { fam: "Conservative", fx: { legit: 2, di: -2 }, rel: { faith: 10, students: -6 } },
+  georgism: { fam: "Liberal and free market", fx: { prod: 0.0003, inv: 0.01 }, rel: { farmers: -6 } },
+  developmental: { fam: "Authoritarian", fx: { prod: 0.0005, di: -4, inv: 0.02, emis: 0.03 }, rel: { greens: -10, students: -6 } },
+  marxism: { fam: "Revolutionary left", fx: { bottom: 0.004, inv: -0.02, prod: -0.0002 }, rel: { unions: 10, business: -15, faith: -5 } },
+  neoliberal: { fam: "Liberal and free market", fx: { inv: 0.03, prod: 0.0004, bottom: -0.003, exp: 0.02 }, rel: { business: 15, unions: -12, pensioners: -3 } },
+  fascism: { fam: "Authoritarian", fx: { di: -6, legit: -3, unrest: -4, loyalty: 6, relDem: -8, corrupt: 3 }, rel: { students: -15, unions: -15, business: -5, faith: -5 } },
+  anarchism: { fam: "Revolutionary left", fx: { di: 3, legit: -3, crime: 0.02, unrest: 2, loyalty: -6 }, rel: { students: 8, business: -15, faith: -8 } },
+  syndicalism: { fam: "Revolutionary left", fx: { bottom: 0.004, prod: -0.0003, inv: -0.02 }, rel: { unions: 18, business: -18 } },
+  federalism: { fam: "Democracy and the state", fx: { unrest: -2, corrupt: 1 }, rel: { farmers: 4, regions: 8 } },
+  republicanism: { fam: "Democracy and the state", fx: { legit: 2, di: 1 }, rel: { faith: -3 } },
+  civicnat: { fam: "Nationalist", fx: { legit: 2, unrest: -1 }, rel: {} },
+  ethnonat: { fam: "Nationalist", fx: { di: -3, relDem: -5, unrest: 2, legit: 1 }, rel: { students: -10, faith: 3 } },
+  corporatism: { fam: "Authoritarian", fx: { unrest: -2, prod: -0.0001, infl: -0.002 }, rel: { unions: 6, business: 6 } },
+  distributism: { fam: "Conservative", fx: { bottom: 0.002, inv: -0.01 }, rel: { farmers: 10, faith: 8, business: -5 } },
+  mutualism: { fam: "Revolutionary left", fx: { bottom: 0.002, di: 1 }, rel: { unions: 5, business: -6 } },
+  fabian: { fam: "Left", fx: { bottom: 0.003, health: -0.01, edu: -0.01 }, rel: { unions: 6, business: -5, students: 4 } },
+  marxlen: { fam: "Revolutionary left", fx: { di: -6, legit: -2, inv: -0.04, prod: -0.0004, bottom: 0.005, loyalty: 3, relDem: -8 }, rel: { business: -25, faith: -15, unions: 5 } },
+  trotskyism: { fam: "Revolutionary left", fx: { inv: -0.03, bottom: 0.004, relAll: -3 }, rel: { business: -20, students: 8 } },
+  maoism: { fam: "Revolutionary left", fx: { di: -7, prod: -0.0005, unrest: -2, loyalty: 4, exp: -0.02, relDem: -8 }, rel: { farmers: 5, business: -25, students: -10, faith: -15 } },
+  chrsoc: { fam: "Left", fx: { bottom: 0.003, crime: -0.01 }, rel: { faith: 15, unions: 8, business: -5 } },
+  integralism: { fam: "Authoritarian", fx: { di: -4, legit: 1, relDem: -4 }, rel: { faith: 20, students: -12, greens: -3 } },
+  onenation: { fam: "Conservative", fx: { unrest: -2, legit: 1 }, rel: { pensioners: 6, business: 4 } },
+  neocon: { fam: "Conservative", fx: { loyalty: 5, exp: 0.01, relAll: -2 }, rel: { business: 8, students: -8 } },
+  ordoliberal: { fam: "Liberal and free market", fx: { infl: -0.004, prod: 0.0003, inv: 0.01, corrupt: -2 }, rel: { business: 8, unions: -4 } },
+  communitarian: { fam: "Conservative", fx: { crime: -0.02, unrest: -1 }, rel: { faith: 6, pensioners: 4 } },
+  civicrep: { fam: "Democracy and the state", fx: { corrupt: -2, legit: 2, di: 1 }, rel: { students: 4 } },
+  partdem: { fam: "Democracy and the state", fx: { di: 3, legit: 2, corrupt: -2, prod: -0.0001 }, rel: { students: 8 } },
+  directdem: { fam: "Democracy and the state", fx: { di: 3, legit: 3, unrest: -2 }, rel: {} },
+  constitutional: { fam: "Democracy and the state", fx: { di: 2, corrupt: -3, legit: 2, inv: 0.01 }, rel: { business: 4 } },
+  peronism: { fam: "Nationalist", fx: { bottom: 0.004, infl: 0.006, inv: -0.02, legit: 2 }, rel: { unions: 15, business: -12 } },
+  baathism: { fam: "Authoritarian", fx: { di: -6, loyalty: 6, unrest: -3, relDem: -6 }, rel: { faith: -12, students: -8 } },
+  kemalism: { fam: "Authoritarian", fx: { prod: 0.0003, edu: -0.01, di: -2, loyalty: 4 }, rel: { faith: -15, students: 6 } },
+  ecosoc: { fam: "Green", fx: { emis: -0.06, inv: -0.02, bottom: 0.003 }, rel: { greens: 18, business: -18, unions: 4 } },
+  degrowth: { fam: "Green", fx: { emis: -0.08, prod: -0.0006, inv: -0.03, part: -0.01 }, rel: { greens: 20, business: -20, unions: -4 } },
+  minarchism: { fam: "Liberal and free market", fx: { inv: 0.03, prod: 0.0003, bottom: -0.005 }, rel: { business: 12, unions: -15, pensioners: -10 } },
+  ancap: { fam: "Liberal and free market", fx: { inv: 0.04, bottom: -0.007, crime: 0.03, legit: -3 }, rel: { business: 10, unions: -20, pensioners: -15 } },
+  libsoc: { fam: "Revolutionary left", fx: { bottom: 0.003, di: 2, inv: -0.02 }, rel: { unions: 10, students: 8, business: -12 } },
+  statecap: { fam: "Authoritarian", fx: { inv: 0.02, prod: 0.0002, corrupt: 3, di: -2 }, rel: { business: -5 } },
+  marketsoc: { fam: "Left", fx: { bottom: 0.003, prod: 0.0001 }, rel: { unions: 8, business: -6 } },
+  demcap: { fam: "Liberal and free market", fx: { inv: 0.015, di: 1, legit: 1 }, rel: { business: 6 } },
+  meritocracy: { fam: "Democracy and the state", fx: { prod: 0.0003, edu: -0.015, corrupt: -2, bottom: -0.002 }, rel: { students: 6, unions: -4 } },
+  cosmopolitan: { fam: "Liberal and free market", fx: { exp: 0.03, relAll: 4 }, rel: { students: 8, farmers: -5 } }
+};
+var TRADITION_FAMILIES = ["Revolutionary left", "Left", "Green", "Liberal and free market", "Democracy and the state", "Conservative", "Nationalist", "Authoritarian"];
+var FX_WORDS = {
+  prod: ["productivity grows faster", "productivity grows slower", 10000], inv: ["more business investment", "less business investment", 100],
+  bottom: ["the poorest earn more", "the poorest earn less", 1000], health: ["less pressure on hospitals", "more pressure on hospitals", -100],
+  edu: ["better schools", "worse schools", -100], crime: ["more crime", "less crime", 100], emis: ["more pollution", "less pollution", 100],
+  infl: ["higher inflation", "lower inflation", 1000], exp: ["more exports", "fewer exports", 100], part: ["more people working", "fewer people working", 100],
+  di: ["more democratic", "less democratic", 1], legit: ["the state seems more legitimate", "the state seems less legitimate", 1],
+  unrest: ["more unrest", "calmer streets", 1], loyalty: ["a more loyal army", "a less loyal army", 1], corrupt: ["more corruption", "less corruption", 1],
+  relDem: ["democracies like you more", "democracies like you less", 1], relAll: ["foreign friends like you more", "foreign friends like you less", 1]
+};
+function traditionInfo(id) { return TRADITION_FX[id] || { fam: "Other", fx: {}, rel: {} }; }
+var FX_BAD_WHEN_UP = ["crime", "emis", "infl", "unrest", "corrupt"];
+function traditionEffects(id) {
+  var T = traditionInfo(id), out = [];
+  for (var k in T.fx) {
+    if (k == "sec") { out.push("<span class='good'>farming does better</span>"); continue; }
+    var w = FX_WORDS[k];
+    if (!w) continue;
+    var v = T.fx[k] * w[2];
+    var words = w[1];
+    if (v > 0) words = w[0];
+    var good = v > 0;
+    if (FX_BAD_WHEN_UP.indexOf(k) >= 0) good = !good;
+    if (good) out.push("<span class='good'>" + words + "</span>");
+    else out.push("<span class='bad'>" + words + "</span>");
+  }
+  for (var grp in T.rel) {
+    var nm = stakeName(grp);
+    if (grp == "regions") nm = "the regions";
+    if (T.rel[grp] > 0) out.push(nm + " +" + T.rel[grp]);
+    else out.push(nm + " " + T.rel[grp]);
+  }
+  return out.join(", ");
+}
+function traditionWeights(g) {
+  if (!g.movement || !g.movement.ideology || !g.movement.ideology.mix) return [];
+  var mix = g.movement.ideology.mix, tot = 0, out = [];
+  for (var i = 0; i < mix.length; i++) tot += parseFloat(mix[i].w) || 0;
+  if (!tot) return [];
+  for (var i = 0; i < mix.length; i++) {
+    var w = (parseFloat(mix[i].w) || 0) / tot;
+    if (w > 0 && TRADITION_FX[mix[i].t]) out.push({ t: mix[i].t, w: w });
+  }
+  return out;
+}
+function traditionRel(g, id) {
+  var W = traditionWeights(g), x = 0;
+  for (var i = 0; i < W.length; i++) { var r = traditionInfo(W[i].t).rel; if (r[id]) x += r[id] * W[i].w; }
+  return x;
+}
 var IDEO_SYMBOLS = ["&#9733;", "&#9775;", "&#9752;", "&#9824;", "&#9670;", "&#9679;", "&#9650;", "&#9728;", "&#9819;", "&#10047;", "&#9881;", "&#9873;", "&#9874;", "&#10070;", "&#9763;"];
 var COMMITMENTS = [
   { id: "jobs", name: "Get unemployment below {p}%", def: function (g) { return Math.max(2, Math.round((1 - g.econ.employed / g.econ.labourForce) * 100) - 1); }, dims: { welfare: 1, ownership: 1 },
@@ -4728,6 +5191,7 @@ function stakeTarget(g, id) {
   if (id == "greens") t += (d.green - 50) * 0.7;
   if (id == "students") t += (g.services.education.access - B.eduAccess) * 400 + (d.liberty - 60) * 0.25 + (job == "teacher" ? 5 : 0);
   if (id == "pensioners") t += ((g.budget.lines.pensions / e.price) / B.pension - 1) * 150;
+  t += traditionRel(g, id);
   for (var i = 0; i < DEALS.length; i++) {
     var D = DEALS[i];
     if (D.group == id && S[id].deal == D.id) t += D.rel;
@@ -4738,7 +5202,7 @@ function stakeTarget(g, id) {
 function regionStakeTarget(g, r) {
   var a = 0, w = 0;
   for (var i = 0; i < g.cohorts.length; i++) { var c = g.cohorts[i]; if (c.region != r || c.age == 0) continue; var cw = cohortPop(g, c); a += c.approval * cw; w += cw; }
-  var t = 50 + ((w ? a / w : 0.45) - 0.45) * 120 + (g.stake.regions[r].deal ? 25 : 0) + ({ federal: 10, devolved: 5, unitary: 0 }[g.constitution.territory] || 0);
+  var t = 50 + ((w ? a / w : 0.45) - 0.45) * 120 + (g.stake.regions[r].deal ? 25 : 0) + ({ federal: 10, devolved: 5, unitary: 0 }[g.constitution.territory] || 0) + traditionRel(g, "regions");
   return clamp(t, 0, 100);
 }
 function makeDeal(g, id, regionIdx) {
@@ -4922,6 +5386,8 @@ function extraFx(g, fx) {
     spend("Membership: " + O[i].name, fee);
     add(T3.fx, Math.min(1, O[i].members.length / 3));
   }
+  var TW = traditionWeights(g);
+  for (var i = 0; i < TW.length; i++) add(traditionInfo(TW[i].t).fx, TW[i].w);
   worldFx(g, fx, add, spend);
   var job = g.leader ? g.leader.job : "";
   if (job == "soldier") fx.loyalty += 3;
@@ -6199,41 +6665,134 @@ PAGES.services = function (arg) {
   return h + "</table>";
 };
 PAGES.elections = function (arg) {
-  var g = game;
+  var g = game, c = g.constitution;
   var h = title("Elections and Parties");
   var due = g.politics.snapElection || g.politics.nextElection;
-  if (!electionsHeld(g)) h += "<div class='notice'>The constitution does not hold elections. Polls below are what people <i>would</i> vote. To bring elections back, <a href='#law/amend'>amend the constitution</a>.</div>";
-  else if (g.constitution.elections == "restricted") h += "<div class='notice'>Elections are tilted toward the government. You'll probably win, but each one costs legitimacy and annoys democracies abroad.</div>";
-  if (electionsHeld(g)) h += "<p>Next " + (g.politics.snapElection ? "<b>snap</b> " : "") + "general election: <b>" + weekDate(g, due) + "</b> (" + (due - g.week) + " weeks). System: " + electionSystemName(g.constitution.electionSystem) + ".</p>";
-  h += "<h2>Opinion polls</h2>" + seatBar(g, g.parties.map(function (p) { return Math.round(p.poll * g.constitution.seats); })) + "<p class='small'>Bar shows what a uniform proportional result would look like.</p>";
-  h += "<table class='data'><tr><th>Party</th><th class='num'>Poll</th><th class='num'>Seats now</th><th>Leader</th><th class='num'>Members</th></tr>";
-  for (var i = 0; i < g.parties.length; i++) { var p = g.parties[i]; h += "<tr><td>" + partyPic(g, p, 40, 28, "float:left;margin-right:5px") + "<span style='color:" + p.color + "'>&#9632;</span> " + esc(p.name) + "</td><td class='num'>" + pct(p.poll) + "</td><td class='num'>" + p.seats + "</td><td>" + esc(p.leader) + "</td><td class='num'>" + p.members.toLocaleString() + "</td></tr>"; }
+  var held = electionsHeld(g);
+  if (!held) h += "<div class='notice'>The constitution does not hold elections. Polls below are what people <i>would</i> vote. To bring elections back, <a href='#law/amend'>amend the constitution</a>.</div>";
+  else if (c.elections == "restricted") h += "<div class='notice'>Elections are tilted toward the government. You'll probably win, but each one costs legitimacy and annoys democracies abroad.</div>";
+  if (held && due) {
+    var left = due - g.week;
+    h += "<div class='box electbox'><b style='font-size:15px'>" + (g.politics.snapElection ? "Snap election" : "Next general election") + ": " + weekDate(g, due) + "</b><br>";
+    h += "<span class='bigcount'>" + left + "</span> weeks to go";
+    if (left <= 4) h += " &middot; <b class='bad'>the campaign is on</b>";
+    h += "<br><span class='small'>System: " + electionSystemName(c.electionSystem) + " &middot; " + c.seats + " seats &middot; " + c.majority + " needed for a majority</span></div>";
+  }
+  var avg = pollAverage(g, 4);
+  var proj = projectSeats(g, avg);
+  var lastEl = g.politics.elections.length ? g.politics.elections[g.politics.elections.length - 1] : null;
+  h += "<h2>Poll average</h2><p class='small'>The average of every published poll in the last 4 weeks, leaving out people who don't know yet. Single polls bounce around by 2 or 3 points, so watch the average, not one poll.</p>";
+  h += "<table class='data full'><tr><th>Party</th><th class='num'>Average</th><th>&nbsp;</th><th class='num'>Since last election</th><th class='num'>Seats now</th>" + (proj ? "<th class='num'>Projected seats</th>" : "") + "<th>Leader</th><th class='num'>Members</th></tr>";
+  var order = [];
+  for (var i = 0; i < g.parties.length; i++) order.push(i);
+  order.sort(function (a, b) { return avg[b] - avg[a]; });
+  for (var o = 0; o < order.length; o++) {
+    var i = order[o], p = g.parties[i];
+    var was = null;
+    if (lastEl) { var li = lastEl.parties.indexOf(p.name); if (li >= 0) was = lastEl.shares[li]; }
+    var ch = "-";
+    if (was !== null) { var dd = (avg[i] - was) * 100; ch = "<span class='" + (dd >= 0 ? "good" : "bad") + "'>" + (dd >= 0 ? "+" : "") + dd.toFixed(1) + "</span>"; }
+    h += "<tr><td>" + partyPic(g, p, 40, 28, "float:left;margin-right:5px") + "<span style='color:" + p.color + "'>&#9632;</span> " + esc(p.name) + (p.player ? " <b>(you)</b>" : "") + (p.inGov && !p.player ? " <span class='small'>(in government)</span>" : "") + (p.banned ? " <span class='small bad'>(banned)</span>" : "") + "</td>";
+    h += "<td class='num'><b>" + pct(avg[i]) + "</b></td><td><span class='bar' style='width:" + Math.round(avg[i] * 200) + "px;background:" + p.color + "'></span></td><td class='num'>" + ch + "</td><td class='num'>" + p.seats + "</td>";
+    if (proj) h += "<td class='num'><b>" + proj[i] + "</b> <span class='small'>(" + (proj[i] - p.seats >= 0 ? "+" : "") + (proj[i] - p.seats) + ")</span></td>";
+    h += "<td>" + esc(p.leader) + "</td><td class='num'>" + p.members.toLocaleString() + "</td></tr>";
+  }
   h += "</table>";
-  h += "<canvas class='chart' id='c_polls' width=600 height=180></canvas>";
-  h += "<div class='small'>" + g.parties.map(function (p, i) { return "<span style='color:" + p.color + "'>&#9632;&#9632;</span> " + esc(p.name); }).join(" &nbsp; ") + "</div>";
-  afterRender.push(function () {
-    var hs = g.history.slice(-104);
-    drawChart("c_polls", hs.map(function (x) { return x.w; }), g.parties.map(function (p, i) { return { color: p.color, values: hs.map(function (x) { return x.polls[i] * 100; }) }; }), { zero: true });
-  });
+  if (proj) {
+    var gpSeats = 0;
+    for (var i = 0; i < g.parties.length; i++) if (g.parties[i].inGov) gpSeats += proj[i];
+    h += "<table width='100%'><tr><td valign=top width='50%' style='text-align:center'><h3>Parliament now</h3>" + hemicycleSvg(g, g.parties.map(function (p) { return p.seats; }), 300, "seats now") + "</td>";
+    h += "<td valign=top style='text-align:center'><h3>If an election were held today</h3>" + hemicycleSvg(g, proj, 300, "projected") + "</td></tr></table>";
+    h += "<p class='small' style='text-align:center'>Parties run from left (economics) to right. The dashed line marks the middle; " + c.majority + " seats make a majority. On today's polls the current government would have <b class='" + (gpSeats >= c.majority ? "good" : "bad") + "'>" + gpSeats + " seats</b>" + (gpSeats >= c.majority ? " (a majority)." : " (short of a majority).") + "</p>";
+    if (c.partySystem != "single") {
+      var co = possibleCoalitions(g, proj);
+      h += "<h2>Possible majorities on today's polls</h2>";
+      if (!co.length) h += "<p>No combination of up to three parties reaches " + c.majority + " seats.</p>";
+      else {
+        h += "<table class='data full'><tr><th>Parties</th><th class='num'>Seats</th><th>How easy?</th></tr>";
+        for (var k = 0; k < co.length; k++) {
+          var mine = false, names = [];
+          for (var j = 0; j < co[k].parties.length; j++) { var pp = g.parties[co[k].parties[j]]; if (pp.player) mine = true; names.push("<span style='color:" + pp.color + "'>&#9632;</span> " + esc(pp.name)); }
+          var ease = co[k].spread < 15 ? "<span class='good'>natural partners</span>" : (co[k].spread < 35 ? "workable" : "<span class='bad'>very awkward</span>");
+          if (co[k].parties.length == 1) ease = "<b>governs alone</b>";
+          h += "<tr" + (mine ? " style='font-weight:bold'" : "") + "><td>" + names.join(" + ") + (mine ? " &larr; includes you" : "") + "</td><td class='num'>" + co[k].seats + "</td><td>" + ease + "</td></tr>";
+        }
+        h += "</table>";
+      }
+    }
+  }
+  h += "<h2>Poll tracker</h2><canvas class='chart' id='c_polls' width=640 height=220 style='max-width:100%'></canvas>";
+  h += "<div class='small'>" + g.parties.map(function (p) { return "<span style='color:" + p.color + "'>&#9632;&#9632;</span> " + esc(p.name); }).join(" &nbsp; ") + "<br>Dots are single polls. Lines are the true underlying support. The red line is polling day.</div>";
+  afterRender.push(function () { drawPollTracker("c_polls", g); });
+  var L = (g.politics.pollLog || []).slice(-8).reverse();
+  if (L.length) {
+    h += "<h2>Latest polls</h2><table class='data full'><tr><th>Week</th><th>Pollster</th><th class='num'>Asked</th>" + g.parties.map(function (p) { return "<th class='num'>" + esc(p.name) + "</th>"; }).join("") + "<th class='num'>Don't know</th></tr>";
+    for (var j = 0; j < L.length; j++) {
+      var P = L[j];
+      h += "<tr><td>" + weekDate(g, P.w) + "</td><td>" + esc(pollsterName(P.by)) + "</td><td class='num'>" + P.n.toLocaleString() + "</td>";
+      var best = -1;
+      for (var i = 0; i < g.parties.length; i++) { var v = P.names ? P.names.indexOf(g.parties[i].name) : -1; if (v >= 0 && P.sh[v] > best) best = P.sh[v]; }
+      for (var i = 0; i < g.parties.length; i++) {
+        var v = P.names ? P.names.indexOf(g.parties[i].name) : -1;
+        h += "<td class='num'>" + (v >= 0 ? (P.sh[v] == best ? "<b>" + pct(P.sh[v], 0) + "</b>" : pct(P.sh[v], 0)) : "-") + "</td>";
+      }
+      h += "<td class='num'>" + pct(P.und, 0) + "</td></tr>";
+    }
+    h += "</table><p class='small'>Margin of error is about &plusmn;" + (100 / Math.sqrt(1000)).toFixed(0) + " points for a poll of 1,000 people. Each pollster also leans a little: Ledger Insight tends to find more right-wing voters, the People's Panel more left-wing ones.</p>";
+  }
+  if (g.regions.length > 1 && c.partySystem != "single") {
+    h += "<h2>Who leads where</h2><table class='data full'><tr><th>Region</th><th class='num'>Seats</th><th>Leading party</th><th class='num'>Lead</th><th>Second</th></tr>";
+    var real = g.parties.map(function (p) { return p.poll; });
+    for (var r = 0; r < g.regions.length; r++) {
+      var sh = scaleShares(nationalShares(g, r), real, avg);
+      var o2 = sh.map(function (v, i) { return i; }).sort(function (a, b) { return sh[b] - sh[a]; });
+      var A = g.parties[o2[0]], B = g.parties[o2[1]] || A;
+      var lead = sh[o2[0]] - (o2[1] !== undefined ? sh[o2[1]] : 0);
+      h += "<tr><td>" + esc(g.regions[r].name) + "</td><td class='num'>" + g.regions[r].seats + "</td><td style='background:" + leadColor(A.color, sh[o2[0]]) + "'><b>" + esc(A.name) + "</b> " + pct(sh[o2[0]], 0) + "</td><td class='num'>" + (lead < 0.03 ? "<b class='bad'>marginal</b> " : "") + (lead * 100).toFixed(1) + " pts</td><td>" + esc(B.name) + " " + pct(sh[o2[1]] || 0, 0) + "</td></tr>";
+    }
+    h += "</table><p class='small'>Marginal regions (lead under 3 points) are where elections are won and lost.</p>";
+  }
   h += "<h2>Past elections</h2>";
   if (!g.politics.elections.length) h += "<p>No elections yet in this game.</p>";
   for (var e = g.politics.elections.length - 1; e >= 0; e--) {
     var el = g.politics.elections[e];
+    var prev = e > 0 ? g.politics.elections[e - 1] : null;
     h += "<h3>" + el.date + ": " + esc(el.text) + "</h3>";
     h += "<p class='small'>Turnout " + pct(el.turnout) + ". Government approval on polling day " + pct(el.approval, 0) + "." + (el.runoff ? " Presidential run-off: you " + pct(el.runoff.player) + " vs " + esc(el.runoff.opponent) + " " + pct(1 - el.runoff.player) + "." : "") + "</p>";
-    h += "<table class='data'><tr><th>Party</th><th class='num'>Vote</th><th class='num'>Seats</th><th class='num'>Change</th></tr>";
-    for (var i = 0; i < el.parties.length; i++) h += "<tr><td>" + esc(el.parties[i]) + "</td><td class='num'>" + pct(el.shares[i]) + "</td><td class='num'>" + el.seats[i] + "</td><td class='num'>" + (el.seats[i] - el.oldSeats[i] >= 0 ? "+" : "") + (el.seats[i] - el.oldSeats[i]) + "</td></tr>";
+    var cols = el.parties.map(function (nm, i) { if (el.colors && el.colors[i]) return el.colors[i]; for (var k = 0; k < g.parties.length; k++) if (g.parties[k].name == nm) return g.parties[k].color; return "#888"; });
+    h += "<table width='100%'><tr><td valign=top>";
+    h += "<table class='data'><tr><th>Party</th><th class='num'>Vote</th>" + (el.pollAvg ? "<th class='num'>Final polls</th>" : "") + "<th class='num'>Seats</th><th class='num'>Change</th></tr>";
+    var swings = [];
+    for (var i = 0; i < el.parties.length; i++) {
+      h += "<tr><td><span style='color:" + cols[i] + "'>&#9632;</span> " + esc(el.parties[i]) + "</td><td class='num'>" + pct(el.shares[i]) + "</td>";
+      if (el.pollAvg) h += "<td class='num'>" + (el.pollAvg[i] !== undefined ? pct(el.pollAvg[i]) : "-") + "</td>";
+      h += "<td class='num'>" + el.seats[i] + "</td><td class='num'>" + (el.seats[i] - el.oldSeats[i] >= 0 ? "+" : "") + (el.seats[i] - el.oldSeats[i]) + "</td></tr>";
+      var pv0 = 0;
+      if (prev) { var pi = prev.parties.indexOf(el.parties[i]); if (pi >= 0) pv0 = prev.shares[pi]; }
+      swings.push(prev ? el.shares[i] - pv0 : 0);
+    }
     h += "</table>";
-    h += "<b>Constituency / regional results</b><table class='data'><tr><th>Region</th>" + el.parties.map(function (p) { return "<th class='num'>" + esc(p) + "</th>"; }).join("") + "</tr>";
+    if (el.pollAvg) {
+      var miss = 0;
+      for (var i = 0; i < el.parties.length; i++) if (el.pollAvg[i] !== undefined) miss = Math.max(miss, Math.abs(el.shares[i] - el.pollAvg[i]));
+      h += "<p class='small'>Biggest polling miss: " + (miss * 100).toFixed(1) + " points" + (miss > 0.03 ? " - <b>the pollsters got it wrong</b>." : ".") + "</p>";
+    }
+    if (prev) h += "<b>Change in vote share since " + prev.date + "</b><br>" + swingBarsSvg(el.parties, cols, swings, 380);
+    h += "</td><td valign=top style='text-align:center;width:260px'>" + (el.system != "presidential only" ? hemicycleSvg({ parties: el.parties.map(function (nm, i) { return { name: nm, color: cols[i], econ: partyEconByName(g, nm, i) }; }) }, el.seats, 240, "seats") : "") + "</td></tr></table>";
+    h += "<details><summary>Results by region</summary><table class='data'><tr><th>Region</th>" + el.parties.map(function (p) { return "<th class='num'>" + esc(p) + "</th>"; }).join("") + "</tr>";
     for (var r = 0; r < el.regions.length; r++) {
       h += "<tr><td>" + esc(el.regions[r].region) + "</td>";
       for (var i = 0; i < el.parties.length; i++) h += "<td class='num'>" + pct(el.regions[r].shares[i], 0) + (el.regions[r].seats ? " (" + el.regions[r].seats[i] + ")" : "") + "</td>";
       h += "</tr>";
     }
-    h += "</table><p><b>Why this result?</b> Main drivers of government approval: " + el.drivers.map(function (d) { return d[0] + " (" + (d[1] >= 0 ? "+" : "") + (d[1] * 100).toFixed(1) + " pts)"; }).join(", ") + ".</p>";
+    h += "</table></details><p><b>Why this result?</b> Main drivers of government approval: " + el.drivers.map(function (d) { return d[0] + " (" + (d[1] >= 0 ? "+" : "") + (d[1] * 100).toFixed(1) + " pts)"; }).join(", ") + ".</p>";
   }
   return h;
 };
+function partyEconByName(g, nm, i) {
+  for (var k = 0; k < g.parties.length; k++) if (g.parties[k].name == nm) return g.parties[k].econ;
+  return 50 + i;
+}
 PAGES.regions = function () {
   var g = game;
   var h = title("Regions");
@@ -6798,12 +7357,11 @@ PAGES.newgame = function () {
   h += "</p><p class='small'>These just fill in the boxes. Mix and match to make your own kind of state, like a federal theocracy with a planned economy or an elected monarchy.</p>";
   h += "<div id='ng_constsum'>" + constSummaryHtml(ngFakeGame()) + "</div>";
   h += "<details><summary><b>Change every detail of the constitution</b> (25 choices)</summary>" + constBuilderHtml(S.con, "ng_c_", "ngRead();ngConstSummary()") + "</details>";
-  if (!S.ideo) S.ideo = { t1: "", t2: "", w2: 30, name: "" };
-  h += "<h2>6. What does your movement believe?</h2><p class='small'>Pick a political tradition (or mix two). You can fine-tune every dial, rename it and write a full manifesto later on the Ideology page, free during your first 4 weeks.</p><table class='data'>";
-  var opts1 = "<option value=''>Keep my party's current ideas</option>" + IDEO_TEMPLATES.map(function (t) { return "<option value='" + t.id + "'" + (S.ideo.t1 == t.id ? " selected" : "") + ">" + t.name + "</option>"; }).join("");
-  var opts2 = "<option value=''>(nothing)</option>" + IDEO_TEMPLATES.map(function (t) { return "<option value='" + t.id + "'" + (S.ideo.t2 == t.id ? " selected" : "") + ">" + t.name + "</option>"; }).join("");
-  h += "<tr><th>Main tradition</th><td><select id='ng_i1' onchange='ngRead();ngRedraw()'>" + opts1 + "</select> <span class='small'>" + (S.ideo.t1 ? ideoTemplate(S.ideo.t1).about : "") + "</span></td></tr>";
-  h += "<tr><th>Mixed with</th><td><select id='ng_i2'>" + opts2 + "</select> at <input type='number' id='ng_iw' value='" + S.ideo.w2 + "' min=0 max=90 step=10 style='width:50px'>%</td></tr>";
+  if (!S.ideo || !S.ideo.mix) S.ideo = { mix: [], name: "" };
+  h += "<h2>6. What does your movement believe?</h2><p class='small'>Pick up to 5 political traditions and give each a share. The shares must add up to 100%. Leave them all on (none) to keep your party's current ideas. You can fine-tune every dial, rename it and write a full manifesto later on the Ideology page, free during your first 4 weeks.</p>";
+  h += traditionSlotsHtml("ng_mix", S.ideo.mix, "ngMixChange()");
+  h += traditionBrowserHtml();
+  h += "<table class='data'>";
   h += "<tr><th>Name of your ideology</th><td><input type='text' id='ng_iname' value='" + esc(S.ideo.name) + "' size=34 maxlength=60 placeholder='blank = use the tradition name'></td></tr>";
   h += "<tr><th>Your job before politics</th><td><select id='ng_job'>" + LEADER_JOBS.map(function (o) { return "<option value='" + o[0] + "'" + (S.job == o[0] ? " selected" : "") + ">" + o[1] + "</option>"; }).join("") + "</select></td></tr></table>";
   h += "<h2>7. Political parties</h2><details><summary><b>Change the parties</b> (optional, the game already made some that fit)</summary><p class='small'>The first party is yours. Economic: 0 = far left, 100 = far right. Social: 0 = traditional, 100 = liberal. Seats are shared out again to fit the legislature.</p>";
@@ -6898,7 +7456,7 @@ function ngRead() {
     p.inGov = i == 0 || $("ng_pg" + i).checked;
   }
   S.difficulty = $("ng_diff").value; S.seed = $("ng_seed").value;
-  if ($("ng_i1")) { S.ideo = { t1: $("ng_i1").value, t2: $("ng_i2").value, w2: clamp(parseFloat($("ng_iw").value) || 0, 0, 90), name: $("ng_iname").value }; S.job = $("ng_job").value; }
+  if ($("ng_mix_t0")) { S.ideo = { mix: readTraditionSlots("ng_mix"), name: $("ng_iname").value }; S.job = $("ng_job").value; }
 }
 function ngRedraw() { var y = window.scrollY; route(); window.scrollTo(0, y); }
 function ngPickTemplate(k) { if (!confirm("Fill the form with " + TEMPLATES[k].name + "'s numbers? Your changes below will be replaced.")) { ngRedraw(); return; } ngState = ngDefaults(k); ngState.mode = "ready"; ngRedraw(); }
@@ -6937,6 +7495,7 @@ function flagUpload(input, done) {
 function startNewGame() {
   ngRead();
   var S = ngState, key = S.template, D = ngDefaults(key);
+  if (S.ideo && S.ideo.mix && S.ideo.mix.length && mixTotal(S.ideo.mix) != 100) { alert("Your tradition shares add up to " + mixTotal(S.ideo.mix) + "%. Make them add up to exactly 100% in section 6, or set them all to (none)."); return; }
   var opts = {
     name: S.name.trim(), capital: S.capital.trim(), currency: S.currency.trim(), symbol: S.symbol.trim(), languages: S.languages.trim(), motto: S.motto.trim(),
     leaderName: S.leader.trim(), partyName: S.party.trim(), difficulty: S.difficulty, seed: S.seed,
@@ -6960,10 +7519,12 @@ function startNewGame() {
   if (S.old != D.old) cu.oldShare = S.old / 100;
   if (S.young != D.young) cu.youngShare = S.young / 100;
   opts.custom = cu;
-  if (S.ideo && S.ideo.t1) {
-    var mix = [{ t: S.ideo.t1, w: 100 - (S.ideo.t2 ? S.ideo.w2 : 0) }];
-    if (S.ideo.t2 && S.ideo.w2 > 0) mix.push({ t: S.ideo.t2, w: S.ideo.w2 });
-    opts.ideology = { name: S.ideo.name.trim() || (mix.length > 1 ? ideoTemplate(mix[0].t).name + " with " + ideoTemplate(mix[1].t).name.toLowerCase() : ideoTemplate(mix[0].t).name), mix: mix, dims: blendDims(mix), about: ideoTemplate(S.ideo.t1).about, manifesto: "" };
+  if (S.ideo && S.ideo.mix && S.ideo.mix.length) {
+    var mix = S.ideo.mix.slice().sort(function (a, b) { return b.w - a.w; });
+    var nm = ideoTemplate(mix[0].t).name;
+    if (mix.length > 1) nm = ideoTemplate(mix[0].t).name + " with " + ideoTemplate(mix[1].t).name.toLowerCase();
+    if (S.ideo.name.trim()) nm = S.ideo.name.trim();
+    opts.ideology = { name: nm, mix: mix, dims: blendDims(mix), about: ideoTemplate(mix[0].t).about, manifesto: "" };
   }
   if (S.job) opts.leaderJob = S.job;
   var oldShort = ngShort(TEMPLATES[key].name), newShort = ngShort(S.name);
@@ -7126,6 +7687,14 @@ function doPeace(terms) {
   route();
 }
 function ngShort(n) { n = String(n || "").trim(); var i = n.lastIndexOf(" of "); return i >= 0 ? n.slice(i + 4) : n; }
+
+function ngMixChange() {
+  var before = ngState.ideo && ngState.ideo.mix ? ngState.ideo.mix.map(function (m) { return m.t; }).join(",") : "";
+  ngRead();
+  var after = ngState.ideo.mix.map(function (m) { return m.t; }).join(",");
+  if (before != after) ngRedraw();
+  else slotTotalRedraw("ng_mix");
+}
 
 </script>
 <script>
@@ -7685,13 +8254,10 @@ PAGES.ideology = function () {
   h += "<h2>Build or change your ideology</h2>";
   var free = freeIdeologyChange(g);
   h += "<p class='small'>" + (free ? "<b>Free for your first 4 weeks.</b> After that, changing your ideology costs credibility (voters and members notice U-turns) and annoys the Purists." : "Changing it now costs credibility. Small tweaks are cheap, big jumps are expensive.") + "</p>";
-  h += "<h3>1. Mix traditions (optional)</h3><p class='small'>Give a weight to one or more traditions and press Blend. This fills in the dials below.</p><table class='data'><tr><th>Tradition</th><th>Weight</th><th>About</th></tr>";
-  for (var i = 0; i < IDEO_TEMPLATES.length; i++) {
-    var T = IDEO_TEMPLATES[i], w = 0;
-    for (var j = 0; j < D.mix.length; j++) if (D.mix[j].t == T.id) w = D.mix[j].w;
-    h += "<tr><td>" + T.name + "</td><td><input type='number' id='mix_" + T.id + "' value='" + w + "' min=0 max=100 step=10 style='width:55px'></td><td class='small'>" + T.about + "</td></tr>";
-  }
-  h += "</table><p><button onclick='ideoBlend()'>Blend these &raquo;</button> <button onclick='ideoClearMix()'>Clear weights</button></p>";
+  h += "<h3>1. Mix traditions (optional)</h3><p class='small'>Pick up to 5 traditions and give each a share. The shares must add up to 100%. Press Blend to fill in the dials below. Each tradition also has its own effects on the country and on organised groups while it is part of your ideology.</p>";
+  h += traditionSlotsHtml("mix", D.mix, "ideoSlotChange()");
+  h += "<p><button onclick='ideoBlend()'>Blend these &raquo;</button> <button onclick='ideoClearMix()'>Clear</button></p>";
+  h += traditionBrowserHtml();
   h += "<h3>2. Set the dials</h3><table class='data'>";
   for (var i = 0; i < IDEO_DIMS.length; i++) {
     var d = IDEO_DIMS[i];
@@ -7736,8 +8302,7 @@ function ideoReadDraft() {
   var D = ideoDraft;
   for (var i = 0; i < 9; i++) if ($("dim_" + i)) D.dims[i] = parseInt($("dim_" + i).value);
   if ($("ideo_name")) { D.name = $("ideo_name").value; D.about = $("ideo_about").value; D.manifesto = $("ideo_manifesto").value; }
-  D.mix = [];
-  for (var i = 0; i < IDEO_TEMPLATES.length; i++) { var el = $("mix_" + IDEO_TEMPLATES[i].id); if (el && parseFloat(el.value) > 0) D.mix.push({ t: IDEO_TEMPLATES[i].id, w: parseFloat(el.value) }); }
+  if ($("mix_t0")) D.mix = readTraditionSlots("mix");
 }
 function ideoPreviewText() {
   var g = game, D = ideoDraft, p = partyPosFromDims(D.dims), now = playerParty(g);
@@ -7749,7 +8314,9 @@ function ideoPreviewText() {
 function ideoDial() { ideoReadDraft(); for (var i = 0; i < 9; i++) $("dimv_" + i).innerHTML = ideoDraft.dims[i]; $("ideo_preview").innerHTML = ideoPreviewText(); }
 function ideoBlend() {
   ideoReadDraft();
-  if (!ideoDraft.mix.length) { alert("Give at least one tradition a weight first."); return; }
+  if (!ideoDraft.mix.length) { alert("Pick at least one tradition first."); return; }
+  var total = mixTotal(ideoDraft.mix);
+  if (total != 100) { alert("The shares add up to " + total + "%. They must add up to exactly 100%."); return; }
   ideoDraft.dims = blendDims(ideoDraft.mix);
   var names = ideoDraft.mix.slice().sort(function (a, b) { return b.w - a.w; }).map(function (m) { return ideoTemplate(m.t).name; });
   if (ideoDraft.name == game.movement.ideology.name) ideoDraft.name = names.length == 1 ? names[0] : names.slice(0, 2).join("-").replace(/ /g, " ") + " synthesis";
@@ -7758,6 +8325,7 @@ function ideoBlend() {
 function ideoClearMix() { ideoReadDraft(); ideoDraft.mix = []; route(); }
 function ideoSave() {
   ideoReadDraft();
+  if (ideoDraft.mix.length && mixTotal(ideoDraft.mix) != 100) { alert("Your tradition shares add up to " + mixTotal(ideoDraft.mix) + "%. Make them add up to exactly 100% (or press Clear) first."); return; }
   var g = game, cost = ideologyChangeCost(g, ideoDraft.dims);
   if (cost && !confirm("Adopting this ideology will cost about " + cost + " credibility and upset purists. Go ahead?")) return;
   var free = freeIdeologyChange(g);
@@ -8125,6 +8693,86 @@ function awayHtml(g) {
   h += "<br>Approval " + pct(A.ap0, 0) + " &rarr; " + pct(A.ap1, 0) + ". Economy " + (A.gdpChange >= 0 ? "grew " : "shrank ") + pct(Math.abs(A.gdpChange), 1) + ".<ul>";
   for (var i = 0; i < A.items.length; i++) h += "<li class='" + (A.items[i].valence > 0 ? "good" : (A.items[i].valence < 0 ? "bad" : "")) + "'>" + weekDate(g, A.items[i].week) + ": " + esc(A.items[i].title) + "</li>";
   return h + "</ul></div>";
+}
+
+var MAX_TRADITIONS = 5;
+function mixTotal(mix) {
+  var t = 0;
+  for (var i = 0; i < mix.length; i++) t += parseFloat(mix[i].w) || 0;
+  return Math.round(t * 10) / 10;
+}
+function traditionOptions(sel) {
+  var h = "<option value=''>(none)</option>";
+  for (var f = 0; f < TRADITION_FAMILIES.length; f++) {
+    var fam = TRADITION_FAMILIES[f];
+    h += "<optgroup label='" + fam + "'>";
+    for (var i = 0; i < IDEO_TEMPLATES.length; i++) {
+      var T = IDEO_TEMPLATES[i];
+      if (traditionInfo(T.id).fam != fam) continue;
+      h += "<option value='" + T.id + "'" + (sel == T.id ? " selected" : "") + ">" + T.name + "</option>";
+    }
+    h += "</optgroup>";
+  }
+  return h;
+}
+function traditionSlotsHtml(prefix, mix, onchange) {
+  var list = (mix || []).slice().sort(function (a, b) { return b.w - a.w; }).slice(0, MAX_TRADITIONS);
+  var h = "<table class='data full'><tr><th>#</th><th>Tradition</th><th class='num'>Share</th><th>About and effects</th></tr>";
+  for (var i = 0; i < MAX_TRADITIONS; i++) {
+    var m = list[i] || { t: "", w: 0 };
+    h += "<tr><td>" + (i + 1) + "</td><td><select id='" + prefix + "_t" + i + "' onchange='" + onchange + "'>" + traditionOptions(m.t) + "</select></td>";
+    h += "<td class='num'><input type='number' id='" + prefix + "_w" + i + "' value='" + (m.t ? Math.round(m.w) : 0) + "' min=0 max=100 step=5 style='width:55px' oninput='" + onchange + "'>%</td>";
+    if (m.t && ideoTemplate(m.t)) h += "<td class='small'>" + ideoTemplate(m.t).about + "<br>" + traditionEffects(m.t) + "</td></tr>";
+    else h += "<td class='small'></td></tr>";
+  }
+  var tot = 0;
+  for (var i = 0; i < list.length; i++) if (list[i].t) tot += parseFloat(list[i].w) || 0;
+  h += "<tr><td></td><td><b>Total</b></td><td class='num'><b id='" + prefix + "_total'>" + Math.round(tot) + "%</b></td><td class='small' id='" + prefix + "_totnote'>" + totalNote(tot, list.length) + "</td></tr></table>";
+  return h;
+}
+function totalNote(tot, n) {
+  if (n == 0) return "No traditions picked.";
+  if (Math.round(tot) == 100) return "<span class='good'>Adds up to 100%.</span>";
+  return "<span class='bad'>Must add up to 100% (" + (tot < 100 ? Math.round(100 - tot) + "% left to give" : Math.round(tot - 100) + "% too much") + ").</span>";
+}
+function readTraditionSlots(prefix) {
+  var mix = [];
+  for (var i = 0; i < MAX_TRADITIONS; i++) {
+    var t = $(prefix + "_t" + i), w = $(prefix + "_w" + i);
+    if (!t || !t.value) continue;
+    var val = parseFloat(w.value) || 0;
+    var dup = false;
+    for (var j = 0; j < mix.length; j++) if (mix[j].t == t.value) { mix[j].w += val; dup = true; }
+    if (!dup) mix.push({ t: t.value, w: val });
+  }
+  return mix;
+}
+function slotTotalRedraw(prefix) {
+  var mix = readTraditionSlots(prefix);
+  var tot = mixTotal(mix);
+  if ($(prefix + "_total")) $(prefix + "_total").innerHTML = Math.round(tot) + "%";
+  if ($(prefix + "_totnote")) $(prefix + "_totnote").innerHTML = totalNote(tot, mix.length);
+}
+function ideoSlotChange() {
+  var before = (ideoDraft.mix || []).map(function (m) { return m.t; }).join(",");
+  ideoReadDraft();
+  var after = ideoDraft.mix.map(function (m) { return m.t; }).join(",");
+  if (before != after) route();
+  else slotTotalRedraw("mix");
+}
+function traditionBrowserHtml() {
+  var h = "<details><summary><b>Browse all " + IDEO_TEMPLATES.length + " traditions and what they do</b></summary>";
+  for (var f = 0; f < TRADITION_FAMILIES.length; f++) {
+    var fam = TRADITION_FAMILIES[f];
+    h += "<h3>" + fam + "</h3><table class='data full'>";
+    for (var i = 0; i < IDEO_TEMPLATES.length; i++) {
+      var T = IDEO_TEMPLATES[i];
+      if (traditionInfo(T.id).fam != fam) continue;
+      h += "<tr><td style='width:170px'><b>" + T.name + "</b></td><td class='small'>" + T.about + "<br>" + traditionEffects(T.id) + "</td></tr>";
+    }
+    h += "</table>";
+  }
+  return h + "<p class='small'>Effects are at full strength when a tradition is 100% of your ideology, and smaller when it is only part of the mix. Numbers after a group are how much their relations with you move.</p></details>";
 }
 
 </script>
