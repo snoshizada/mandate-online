@@ -5475,7 +5475,6 @@ function picNext(img) {
   img.setAttribute("data-i", i); img.src = L[i];
 }
 function newsPic(a, w, hh, style) { return picSlot(["images/news/" + newsPicName(a.type), "images/news/general"], w, hh, style); }
-function ministryPic(id, w, hh, style) { return picSlot(["images/ministry/" + id], w, hh, style); }
 var INDICATORS = [
   { key: "gdp", name: "GDP", fmt: function (v) { return money(game, v); }, why: "gdp" },
   { key: "growth", name: "Real growth", fmt: function (v) { return pct(v); }, why: "gdp" },
@@ -5602,13 +5601,13 @@ PAGES.cabinet = function (arg) {
       h += "<tr class='small'><td>" + esc(ministryName(m.ministry)) + "</td><td colspan=6><i>Merged into " + esc(ministryName(m.mergedInto)) + "</i>" + (line ? " (budget " + money(g, line) + ")" : "") + "</td><td><a href='javascript:doSplit(\"" + m.ministry + "\")'>Split off</a></td></tr>";
       continue;
     }
-    h += "<tr><td>" + ministryPic(m.ministry, 48, 32, "float:left;margin-right:6px") + esc(ministryName(m.ministry)) + (m.load ? " <span class='small'>(+" + m.load + " merged)</span>" : "") + "</td><td>" + personPic(m.name, 26, 32, "float:left;margin-right:5px") + esc(m.name) + "</td><td>" + esc(findParty(g, m.party).name) + "</td><td class='num'>" + Math.round(m.competence * 100) + "</td><td class='num'>" + pct(clamp(m.approval, 0, 1), 0) + "</td><td class='num'>" + (line ? money(g, line) : "-") + "</td><td>" + weekDate(g, m.since) + "</td>";
+    h += "<tr><td>" + esc(ministryName(m.ministry)) + (m.load ? " <span class='small'>(+" + m.load + " merged)</span>" : "") + "</td><td>" + esc(m.name) + "</td><td>" + esc(findParty(g, m.party).name) + "</td><td class='num'>" + Math.round(m.competence * 100) + "</td><td class='num'>" + pct(clamp(m.approval, 0, 1), 0) + "</td><td class='num'>" + (line ? money(g, line) : "-") + "</td><td>" + weekDate(g, m.since) + "</td>";
     h += "<td class='small'><a href='#cabinet/" + m.ministry + "'>Replace</a> | <a href='javascript:doRename(\"" + m.ministry + "\")'>Rename</a> | <a href='javascript:doMerge(\"" + m.ministry + "\")'>Merge</a></td></tr>";
   }
   h += "</table><p class='small'>Merging a ministry saves some admin money, but one minister doing two jobs is less effective. Renaming is free.</p>";
   if (arg) {
     var m = minister(g, arg);
-    h += "<h2>Replace the Minister for " + ministryName(arg) + "</h2>" + ministryPic(arg, 200, 120, "float:right;margin:0 0 8px 12px");
+    h += "<h2>Replace the Minister for " + ministryName(arg) + "</h2>";
     h += "<p>Current: <b>" + esc(m.name) + "</b> (" + esc(findParty(g, m.party).name) + ", competence " + Math.round(m.competence * 100) + ").</p>";
     h += "<table class='data'><tr><th>Candidate</th><th>Party</th><th class='num'>Competence</th><th>Effect</th><th></th></tr>";
     var cands = candidates(g, arg);
@@ -6181,7 +6180,7 @@ PAGES.elections = function (arg) {
   if (electionsHeld(g)) h += "<p>Next " + (g.politics.snapElection ? "<b>snap</b> " : "") + "general election: <b>" + weekDate(g, due) + "</b> (" + (due - g.week) + " weeks). System: " + electionSystemName(g.constitution.electionSystem) + ".</p>";
   h += "<h2>Opinion polls</h2>" + seatBar(g, g.parties.map(function (p) { return Math.round(p.poll * g.constitution.seats); })) + "<p class='small'>Bar shows what a uniform proportional result would look like.</p>";
   h += "<table class='data'><tr><th>Party</th><th class='num'>Poll</th><th class='num'>Seats now</th><th>Leader</th><th class='num'>Members</th></tr>";
-  for (var i = 0; i < g.parties.length; i++) { var p = g.parties[i]; h += "<tr><td>" + partyPic(g, p, 40, 28, "float:left;margin-right:5px") + "<span style='color:" + p.color + "'>&#9632;</span> " + esc(p.name) + "</td><td class='num'>" + pct(p.poll) + "</td><td class='num'>" + p.seats + "</td><td>" + personPic(p.leader, 22, 28, "float:left;margin-right:5px") + esc(p.leader) + "</td><td class='num'>" + p.members.toLocaleString() + "</td></tr>"; }
+  for (var i = 0; i < g.parties.length; i++) { var p = g.parties[i]; h += "<tr><td>" + partyPic(g, p, 40, 28, "float:left;margin-right:5px") + "<span style='color:" + p.color + "'>&#9632;</span> " + esc(p.name) + "</td><td class='num'>" + pct(p.poll) + "</td><td class='num'>" + p.seats + "</td><td>" + esc(p.leader) + "</td><td class='num'>" + p.members.toLocaleString() + "</td></tr>"; }
   h += "</table>";
   h += "<canvas class='chart' id='c_polls' width=600 height=180></canvas>";
   h += "<div class='small'>" + g.parties.map(function (p, i) { return "<span style='color:" + p.color + "'>&#9632;&#9632;</span> " + esc(p.name); }).join(" &nbsp; ") + "</div>";
@@ -6579,13 +6578,6 @@ function pageBanner(page, arg) {
 
 var NO_BANNER = { article: 1, event: 1, bill: 1, chart: 1, why: 1 };
 
-function personPic(name, w, hh, style) {
-  var n = 0;
-  var s = String(name);
-  for (var i = 0; i < s.length; i++) n = (n * 31 + s.charCodeAt(i)) % 1000;
-  var num = (n % 12) + 1;
-  return picSlot(["images/people/" + slug(name), "images/people/person-" + num], w, hh, style);
-}
 function groupPic(id, w, hh, style) { return picSlot(["images/groups/" + id], w, hh, style); }
 function paperLogo(id, hh) {
   var list = notMissing(["images/papers/" + id + ".png", "images/papers/" + id + ".jpg", "images/papers/" + id + ".webp"]);
