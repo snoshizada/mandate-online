@@ -472,122 +472,123 @@ var LAST_NAMES = ["Varga", "Lindqvist", "Moreau", "Kessler", "Novak", "Halloran"
   "O'Brien", "Byrne", "Kavanagh", "Doyle", "Mensah", "Adeyemi", "Nwosu", "Haddad", "Rahman", "Patel", "Sharma", "Nakamura", "Tanaka", "Chen", "Wong", "Silva", "Santos", "Mendes", "Navarro", "Ortega", "Delgado", "Kerr", "Munro", "Sinclair", "Blackwood", "Thornton", "Ellery", "Quinlan", "Carver"];
 var TEMPLATES = {
   A: {
-    title: "Small developed parliamentary democracy",
-    name: "Commonwealth of Arvenia",
-    capital: "Halden",
-    currency: "crown",
-    currencySymbol: "Kr",
-    languages: "Arvenian",
-    flag: ["#17345B", "#FFFFFF", "#C8102E"],
-    govType: "Parliamentary democracy",
+    title: "High-tax welfare monarchy",
+    name: "Kingdom of Skarnland",
+    capital: "Holmvik",
+    currency: "riksdaler",
+    currencySymbol: "Rd",
+    languages: "Skarnish",
+    flag: ["#F2C200", "#1F4E9C", "#F2C200"],
+    govType: "Constitutional monarchy",
     leaderTitle: "Prime Minister",
-    electionSystem: "dhondt",
+    electionSystem: "national",
     termYears: 4,
-    seats: 150,
-    majority: 76,
+    seats: 349,
+    majority: 175,
     confidenceRule: true,
     constitution: {
       executive: "pm", headOfState: "monarch_const", legislature: "elected", chambers: 1, upperHouse: "regional", legPower: "full",
-      seats: 150, electionSystem: "dhondt", elections: "free", partySystem: "multi", termYears: 4, termLimit: 0, confidenceRule: true,
+      seats: 349, electionSystem: "national", elections: "free", partySystem: "multi", termYears: 4, termLimit: 0, confidenceRule: true,
       amendThreshold: 0.667, referendum: true, fiscalRule: 0, centralBankIndependent: true, judiciary: "independent", territory: "unitary",
       press: "free", assembly: "free", votingAge: 18, religion: "tolerant", emergency: "limited", economy: "mixed", leaderTitle: ""
     },
     regions: [
-      { name: "Capital Region", pop: 2.1, income: 1.25, unemp: 0.85, seats: 52 },
-      { name: "Northmark", pop: 1.4, income: 0.9, unemp: 1.15, seats: 34 },
-      { name: "Westvale", pop: 1.3, income: 0.95, unemp: 1.0, seats: 32 },
-      { name: "Southern Isles", pop: 1.2, income: 0.85, unemp: 1.1, seats: 32 }
+      { name: "Holmvik Capital Region", pop: 2.6, income: 1.3, unemp: 0.85, seats: 86 },
+      { name: "Gotmark Lowlands", pop: 3.2, income: 0.95, unemp: 1.05, seats: 106 },
+      { name: "Dalmark Forests", pop: 2.4, income: 0.9, unemp: 1.0, seats: 80 },
+      { name: "Isfjall North", pop: 2.3, income: 0.85, unemp: 1.15, seats: 77 }
     ],
-    gdp: 360, unemployment: 0.055, inflation: 0.022, debtRatio: 0.58, policyRate: 0.03,
-    oldShare: 0.21, youngShare: 0.18,
-    taxes: { incomeBasic: 22, incomeHigher: 40, incomeTop: 48, vat: 21, corp: 22, payroll: 12, property: 0.6, excise: 18, tariff: 3, carbon: 40 },
-    spending: { health: 31, education: 20, police: 6, justice: 3, defence: 5.5, transport: 10, housing: 6, environment: 4, pensions: 34, welfare: 16, admin: 9, foreign: 3 },
+    gdp: 600, unemployment: 0.075, inflation: 0.02, debtRatio: 0.33, policyRate: 0.025,
+    oldShare: 0.2, youngShare: 0.2,
+    taxes: { incomeBasic: 32, incomeHigher: 52, incomeTop: 57, vat: 25, corp: 21, payroll: 16, property: 0.5, excise: 22, tariff: 2, carbon: 120 },
+    spending: { health: 50, education: 42, police: 8, justice: 4, defence: 9, transport: 18, housing: 6, environment: 6, pensions: 62, welfare: 48, admin: 18, foreign: 6 },
     parties: [
-      { id: "lab", name: "Labour Alliance", econ: 32, social: 60, color: "#B22222", seats: 48, inGov: true, player: true },
-      { id: "grn", name: "Green Left", econ: 25, social: 80, color: "#2E8B57", seats: 18, inGov: true },
-      { id: "cen", name: "Centre Party", econ: 52, social: 55, color: "#DAA520", seats: 14, inGov: true },
-      { id: "con", name: "Conservative Union", econ: 68, social: 35, color: "#1E3A8A", seats: 44, inGov: false },
-      { id: "lib", name: "Liberal Democrats", econ: 62, social: 70, color: "#E68A00", seats: 12, inGov: false },
-      { id: "nat", name: "National Front of Arvenia", econ: 55, social: 15, color: "#5B3A29", seats: 14, inGov: false }
+      { id: "sdw", name: "Social Democratic Labour Party", econ: 30, social: 62, color: "#D7263D", seats: 108, inGov: true, player: true },
+      { id: "grn", name: "Green Ecology Party", econ: 28, social: 82, color: "#3E8E41", seats: 18, inGov: true },
+      { id: "cen", name: "Agrarian Centre Party", econ: 56, social: 62, color: "#2E7D32", seats: 25, inGov: true },
+      { id: "lft", name: "Left Party", econ: 12, social: 70, color: "#8B0000", seats: 24, inGov: true },
+      { id: "mod", name: "Moderate Coalition Party", econ: 68, social: 50, color: "#4A90D9", seats: 68, inGov: false },
+      { id: "skd", name: "Skarnland Democrats", econ: 52, social: 15, color: "#E6B800", seats: 72, inGov: false },
+      { id: "chd", name: "Christian Democrats", econ: 60, social: 30, color: "#1B3A6B", seats: 18, inGov: false },
+      { id: "lib", name: "Liberals", econ: 64, social: 72, color: "#4FC3F7", seats: 16, inGov: false }
     ]
   },
   B: {
-    title: "Middle-income presidential republic with regional governments",
-    name: "Federal Republic of Castavia",
-    capital: "San Aurel",
-    currency: "peso",
-    currencySymbol: "$C",
-    languages: "Castavian, Ornish",
-    flag: ["#0A6E3C", "#F2C200", "#0A6E3C"],
+    title: "Low-tax federal superpower with two big parties",
+    name: "States of Vespucia",
+    capital: "New Napolia",
+    currency: "eagle",
+    currencySymbol: "E$",
+    languages: "Vespucian, Castilian",
+    flag: ["#1C2E5C", "#E8E2D0", "#A51C30"],
     govType: "Presidential federal republic",
     leaderTitle: "President",
     electionSystem: "fptp",
     termYears: 4,
-    seats: 200,
-    majority: 101,
+    seats: 435,
+    majority: 218,
     confidenceRule: false,
     constitution: {
       executive: "president", headOfState: "same", legislature: "elected", chambers: 2, upperHouse: "regional", legPower: "full",
-      seats: 200, electionSystem: "fptp", elections: "free", partySystem: "multi", termYears: 4, termLimit: 2, confidenceRule: false,
-      amendThreshold: 0.6, referendum: false, fiscalRule: 0, centralBankIndependent: true, judiciary: "independent", territory: "federal",
+      seats: 435, electionSystem: "fptp", elections: "free", partySystem: "multi", termYears: 4, termLimit: 2, confidenceRule: false,
+      amendThreshold: 0.75, referendum: false, fiscalRule: 0, centralBankIndependent: true, judiciary: "independent", territory: "federal",
       press: "free", assembly: "free", votingAge: 18, religion: "tolerant", emergency: "limited", economy: "market", leaderTitle: ""
     },
     regions: [
-      { name: "Aurel Capital District", pop: 9.5, income: 1.5, unemp: 0.8, seats: 50 },
-      { name: "Costa Verde", pop: 11.0, income: 1.0, unemp: 0.95, seats: 52 },
-      { name: "Altiplano", pop: 8.0, income: 0.7, unemp: 1.25, seats: 40 },
-      { name: "Ornland", pop: 6.5, income: 0.8, unemp: 1.15, seats: 30 },
-      { name: "Rio Seco", pop: 5.0, income: 0.75, unemp: 1.1, seats: 28 }
+      { name: "Atlantic Seaboard", pop: 14, income: 1.3, unemp: 0.9, seats: 92 },
+      { name: "Magnolia South", pop: 20, income: 0.85, unemp: 1.05, seats: 132 },
+      { name: "Heartland Plains", pop: 13, income: 0.9, unemp: 1.1, seats: 86 },
+      { name: "Pacific Coast", pop: 12, income: 1.3, unemp: 0.95, seats: 79 },
+      { name: "Frontier Mountains", pop: 7, income: 0.95, unemp: 0.95, seats: 46 }
     ],
-    gdp: 560, unemployment: 0.085, inflation: 0.048, debtRatio: 0.52, policyRate: 0.065,
-    oldShare: 0.12, youngShare: 0.27,
-    taxes: { incomeBasic: 15, incomeHigher: 28, incomeTop: 35, vat: 16, corp: 28, payroll: 9, property: 0.3, excise: 15, tariff: 9, carbon: 0 },
-    spending: { health: 30, education: 29, police: 12, justice: 5, defence: 12, transport: 18, housing: 9, environment: 3, pensions: 36, welfare: 14, admin: 18, foreign: 2 },
+    gdp: 5300, unemployment: 0.042, inflation: 0.03, debtRatio: 0.98, policyRate: 0.045,
+    oldShare: 0.17, youngShare: 0.22,
+    taxes: { incomeBasic: 12, incomeHigher: 24, incomeTop: 37, vat: 6, corp: 21, payroll: 15, property: 1.1, excise: 8, tariff: 10, carbon: 0 },
+    spending: { health: 420, education: 290, police: 80, justice: 50, defence: 175, transport: 110, housing: 30, environment: 25, pensions: 270, welfare: 110, admin: 160, foreign: 15 },
     parties: [
-      { id: "pdc", name: "Democratic Renewal Party", econ: 45, social: 55, color: "#6A1B9A", seats: 92, inGov: true, player: true },
-      { id: "fpc", name: "Federal People's Coalition", econ: 65, social: 30, color: "#1565C0", seats: 76, inGov: false },
-      { id: "mts", name: "Workers' Movement", econ: 20, social: 50, color: "#C62828", seats: 20, inGov: false },
-      { id: "orn", name: "Ornish Regional League", econ: 50, social: 45, color: "#00897B", seats: 12, inGov: true }
+      { id: "lty", name: "Liberty Party", econ: 74, social: 28, color: "#1565C0", seats: 222, inGov: true, player: true },
+      { id: "cdm", name: "Commonwealth Democrats", econ: 42, social: 66, color: "#C62828", seats: 211, inGov: false },
+      { id: "lbu", name: "Libertarian Union", econ: 88, social: 72, color: "#F9A825", seats: 1, inGov: false },
+      { id: "grl", name: "Green League", econ: 20, social: 80, color: "#2E7D32", seats: 1, inGov: false }
     ]
   },
   C: {
-    title: "Post-crisis coalition republic with high debt and weak trust",
-    name: "Republic of Morvania",
-    capital: "Kessel",
-    currency: "mark",
-    currencySymbol: "M",
-    languages: "Morvanian",
-    flag: ["#7A1F1F", "#E0D6C2", "#2B2B2B"],
-    govType: "Parliamentary republic",
-    leaderTitle: "Prime Minister",
-    electionSystem: "national",
+    title: "Coalition-run social market federation",
+    name: "Federal Republic of Alemanny",
+    capital: "Spreeburg",
+    currency: "taler",
+    currencySymbol: "T",
+    languages: "Alemannish",
+    flag: ["#D4A017", "#B22222", "#111111"],
+    govType: "Parliamentary federal republic",
+    leaderTitle: "Chancellor",
+    electionSystem: "mixed",
     termYears: 4,
-    seats: 120,
-    majority: 61,
+    seats: 630,
+    majority: 316,
     confidenceRule: true,
     constitution: {
-      executive: "pm", headOfState: "president_indirect", legislature: "elected", chambers: 1, upperHouse: "regional", legPower: "full",
-      seats: 120, electionSystem: "national", elections: "free", partySystem: "multi", termYears: 4, termLimit: 0, confidenceRule: true,
-      amendThreshold: 0.667, referendum: false, fiscalRule: 3, centralBankIndependent: true, judiciary: "independent", territory: "unitary",
-      press: "free", assembly: "free", votingAge: 18, religion: "secular", emergency: "limited", economy: "mixed", leaderTitle: ""
+      executive: "pm", headOfState: "president_indirect", legislature: "elected", chambers: 2, upperHouse: "regional", legPower: "full",
+      seats: 630, electionSystem: "mixed", elections: "free", partySystem: "multi", termYears: 4, termLimit: 0, confidenceRule: true,
+      amendThreshold: 0.667, referendum: false, fiscalRule: 3, centralBankIndependent: true, judiciary: "independent", territory: "federal",
+      press: "free", assembly: "free", votingAge: 18, religion: "tolerant", emergency: "limited", economy: "mixed", leaderTitle: "Chancellor"
     },
     regions: [
-      { name: "Kessel Metropolitan", pop: 3.2, income: 1.3, unemp: 0.85, seats: 40 },
-      { name: "Upper Morva", pop: 2.4, income: 0.9, unemp: 1.1, seats: 30 },
-      { name: "Lower Morva", pop: 2.1, income: 0.8, unemp: 1.2, seats: 26 },
-      { name: "Eastern Marches", pop: 1.8, income: 0.75, unemp: 1.25, seats: 24 }
+      { name: "Rhenania", pop: 7.5, income: 1.1, unemp: 0.95, seats: 197 },
+      { name: "Alpenmark", pop: 6.5, income: 1.2, unemp: 0.75, seats: 171 },
+      { name: "Hanse Coast", pop: 4.5, income: 1.0, unemp: 1.0, seats: 118 },
+      { name: "Ostmark", pop: 5.5, income: 0.78, unemp: 1.4, seats: 144 }
     ],
-    gdp: 240, unemployment: 0.112, inflation: 0.035, debtRatio: 1.18, policyRate: 0.04,
+    gdp: 1300, unemployment: 0.06, inflation: 0.022, debtRatio: 0.63, policyRate: 0.03,
     oldShare: 0.23, youngShare: 0.16,
-    taxes: { incomeBasic: 23, incomeHigher: 38, incomeTop: 45, vat: 23, corp: 24, payroll: 15, property: 0.4, excise: 20, tariff: 4, carbon: 15 },
-    spending: { health: 17, education: 11, police: 4.5, justice: 2.2, defence: 3.5, transport: 4, housing: 2.5, environment: 1.5, pensions: 30, welfare: 12, admin: 8, foreign: 1 },
+    taxes: { incomeBasic: 24, incomeHigher: 42, incomeTop: 45, vat: 19, corp: 30, payroll: 20, property: 0.3, excise: 16, tariff: 3, carbon: 55 },
+    spending: { health: 105, education: 58, police: 14, justice: 8, defence: 22, transport: 32, housing: 10, environment: 10, pensions: 135, welfare: 75, admin: 38, foreign: 9 },
     parties: [
-      { id: "smp", name: "Social Market Party", econ: 50, social: 50, color: "#0277BD", seats: 34, inGov: true, player: true },
-      { id: "cdm", name: "Christian Democrats", econ: 62, social: 30, color: "#37474F", seats: 18, inGov: true },
-      { id: "rnw", name: "Renewal", econ: 45, social: 70, color: "#F57C00", seats: 12, inGov: true },
-      { id: "soc", name: "Socialist Party", econ: 22, social: 60, color: "#B71C1C", seats: 30, inGov: false },
-      { id: "pat", name: "Patriots of Morvania", econ: 58, social: 12, color: "#4E342E", seats: 20, inGov: false },
-      { id: "pir", name: "Citizens' Protest List", econ: 40, social: 55, color: "#9E9D24", seats: 6, inGov: false }
+      { id: "chu", name: "Christian Union", econ: 62, social: 35, color: "#222222", seats: 208, inGov: true, player: true },
+      { id: "spd", name: "Social Democrats", econ: 35, social: 58, color: "#E3000F", seats: 120, inGov: true },
+      { id: "afa", name: "Alternative for Alemannia", econ: 58, social: 12, color: "#009EE0", seats: 152, inGov: false },
+      { id: "grn", name: "Alliance Greens", econ: 30, social: 82, color: "#46962B", seats: 85, inGov: false },
+      { id: "lft", name: "The Left", econ: 12, social: 65, color: "#BE3075", seats: 65, inGov: false }
     ]
   }
 };
@@ -1049,7 +1050,6 @@ function avgGovEcon(g) {
 }
 function riskPremium(g, debtRatio, deficitRatio) {
   var rp = Math.max(0, debtRatio - 0.9) * 0.04 + Math.max(0, -deficitRatio - 0.03) * 0.15;
-  if (g.template == "C") rp += 0.01;
   return clamp(rp, 0, 0.12);
 }
 function serviceDemand(g, s) {
@@ -2363,7 +2363,7 @@ function recordHistory(g) {
   var cum = 0, area = 0;
   for (var i = 0; i < 5; i++) { var s = f.q[i].disp / f.D; area += (cum * 2 + s) * 0.2 / 2; cum += s; }
   var gini = 1 - 2 * area;
-  if (g.poverty0 === undefined) { g.poverty0 = g.template == "A" ? 0.12 : (g.template == "B" ? 0.22 : 0.18); g.d1ratio0 = d1 / med; }
+  if (g.poverty0 === undefined) { g.poverty0 = g.template == "A" ? 0.09 : (g.template == "B" ? 0.18 : 0.12); g.d1ratio0 = d1 / med; }
   var poverty = clamp(g.poverty0 - 0.8 * (d1 / med - g.d1ratio0), 0.02, 0.5);
   var h = {
     w: g.week, gdp: e.gdp, realGdp: e.realGdp, cpi: e.cpi, infl: 0, u: 1 - e.employed / e.labourForce,
@@ -2686,7 +2686,7 @@ function regimeWeekly(g) {
   P.di = di;
   var a = P.approval;
   var ac = g.policies.anticorruption && g.policies.anticorruption.active ? g.policies.anticorruption.value / (g.econ.gdp * 0.001) * 3 : 0;
-  var corrTarget = 15 + (100 - di) * 0.35 + { independent: 0, partial: 4, controlled: 10 }[c.judiciary] + (c.press == "free" ? 0 : 5) - ac + (g.template == "B" ? 10 : (g.template == "C" ? 8 : 0)) + (g.lawFx ? g.lawFx.corrupt : 0);
+  var corrTarget = 15 + (100 - di) * 0.35 + { independent: 0, partial: 4, controlled: 10 }[c.judiciary] + (c.press == "free" ? 0 : 5) - ac + (g.template == "B" ? 6 : (g.template == "C" ? 2 : 0)) + (g.lawFx ? g.lawFx.corrupt : 0);
   P.corruption += (clamp(corrTarget, 2, 95) - P.corruption) * 0.01;
   g.compliance = clamp(g.compliance0 - (P.corruption - P.corruption0) * 0.002, 0.5, 0.99);
   var warBoost = g.war ? (g.war.front > 0 ? 5 : -5) : 0;
@@ -9663,7 +9663,7 @@ var game = null;
 var afterRender = [];
 var lastSaved = null;
 function esc(s) {
-  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 function $(id) { return document.getElementById(id); }
 function route() {
