@@ -2512,21 +2512,110 @@ function defaultTitle(c) {
   return "Chairman of the Military Council";
 }
 function describeGov(c) {
-  var t = "";
-  if (c.executive == "junta") t = "Military junta";
-  else if (c.executive == "partyleader" && c.partySystem == "single") t = "One-party state";
-  else if (c.executive == "monarch") t = c.legislature == "elected" && c.legPower == "full" ? "Constitutional monarchy with a ruling monarch" : "Absolute monarchy";
-  else if (c.executive == "council") t = c.nobility == "ruling" || c.nobility == "privileged" ? "Aristocratic republic" : "Directorial republic";
-  else if (c.executive == "partyleader") t = "Party-led republic";
-  else if (c.executive == "president") t = c.headOfState == "monarch_const" ? "Presidential monarchy" : "Presidential republic";
-  else if (c.executive == "pm") t = c.headOfState == "monarch_const" ? "Parliamentary constitutional monarchy" : (c.headOfState == "president_elected" ? "Semi-presidential republic" : "Parliamentary republic");
-  if (c.succession == "elective") t += " (elective throne)";
-  if (c.nobility == "ruling" && c.executive != "council") t += ", ruled by the nobility";
-  if (c.elections == "restricted") t = "Electoral autocracy (" + t.toLowerCase() + ")";
-  if (c.elections == "none" && (c.executive == "pm" || c.executive == "president" || c.executive == "council")) t = "Authoritarian " + t.toLowerCase();
-  if (c.territory == "federal") t += ", federal";
-  if (c.economy == "planned") t += ", planned economy";
+  var t = "", ex = c.executive, hs = c.headOfState, rel = c.religion, nob = c.nobility || "none", suc = c.succession || "none";
+  var elected = c.legislature == "elected", weakLeg = c.legislature != "elected" || c.legPower != "full";
+  var lords = c.chambers == 2 && (c.upperHouse == "hereditary" || c.upperHouse == "estates");
+  var demo = c.elections == "free" && c.partySystem == "multi";
+  if (ex == "junta") {
+    if (rel == "state") t = "Clerical-military junta";
+    else if (nob == "ruling") t = "Officers' aristocracy";
+    else if (c.economy == "planned") t = "Revolutionary military council";
+    else if (c.elections == "free" && c.partySystem == "multi") t = "Military caretaker government";
+    else t = "Military junta";
+  } else if (ex == "monarch") {
+    if (suc == "elective" && nob == "ruling" && lords) t = "Noble commonwealth under an elected king";
+    else if (suc == "elective") t = weakLeg ? "Elective absolute monarchy" : "Elective monarchy";
+    else if (nob == "ruling" && c.territory != "unitary") t = "Feudal monarchy";
+    else if (nob == "ruling") t = "Aristocratic monarchy";
+    else if (rel == "state" && (c.legPower == "rubber" || c.legislature == "none") && c.press == "state") t = "Theocratic absolute monarchy";
+    else if (suc == "none") t = "Monarchy without a dynasty";
+    else if (suc == "designated") t = "Adoptive monarchy";
+    else if (c.economy == "planned" && weakLeg) t = "Crowned command state";
+    else if (!weakLeg && c.elections == "free") t = rel == "state" ? "Confessional executive monarchy" : "Executive constitutional monarchy";
+    else if (elected && c.legPower == "advisory") t = "Semi-constitutional monarchy";
+    else if (c.legislature == "none") t = "Autocratic monarchy";
+    else t = "Absolute monarchy";
+  } else if (ex == "council") {
+    if (nob == "ruling" && lords) t = "Patrician republic";
+    else if (nob == "ruling") t = "Aristocratic republic";
+    else if (nob == "privileged") t = "Oligarchic republic";
+    else if (rel == "state") t = "Clerical council republic";
+    else if (c.partySystem == "single" && c.economy == "planned") t = "Workers' council republic";
+    else if (c.partySystem == "single") t = "One-party council state";
+    else if (c.referendum && c.territory == "federal" && demo) t = "Confederal directorate";
+    else if (c.referendum && demo) t = "Directorial democracy";
+    else t = "Directorial republic";
+  } else if (ex == "partyleader") {
+    if (c.partySystem == "single" && rel == "state") t = "Religious one-party state";
+    else if (c.partySystem == "single" && c.economy == "planned") t = "Vanguard party state";
+    else if (c.partySystem == "single" && c.economy == "market") t = "Developmental one-party state";
+    else if (c.partySystem == "single") t = "One-party state";
+    else if (nob != "none" && nob != "titles") t = "Party oligarchy";
+    else if (c.legislature == "none") t = "Party-run republic without a parliament";
+    else t = "Dominant-party republic";
+  } else if (ex == "president") {
+    if (hs == "monarch_const") t = "Presidential monarchy";
+    else if (c.elections == "none") t = "Presidential dictatorship";
+    else if (c.legislature == "none") t = "Presidential rule by decree";
+    else if (nob == "ruling") t = "Oligarchic presidential republic";
+    else if (rel == "state") t = "Confessional presidential republic";
+    else if (c.legPower == "advisory" || c.legPower == "rubber") t = "Super-presidential republic";
+    else if (c.termLimit == 1) t = "Single-term presidential republic";
+    else if (c.referendum && demo) t = "Presidential republic with direct democracy";
+    else t = "Presidential republic";
+  } else {
+    if (hs == "monarch_const") {
+      if (suc == "elective") t = "Elective parliamentary monarchy";
+      else if (nob == "ruling") t = "Aristocratic parliamentary monarchy";
+      else if (rel == "state") t = "Confessional parliamentary monarchy";
+      else if (suc == "none") t = "Crowned parliamentary republic";
+      else if (lords || nob == "privileged") t = "Parliamentary monarchy with a peerage";
+      else t = "Parliamentary constitutional monarchy";
+    } else if (hs == "president_elected") t = rel == "state" ? "Confessional semi-presidential republic" : "Semi-presidential republic";
+    else if (hs == "same") t = "Premier-led republic";
+    else if (nob == "ruling") t = "Aristocratic parliamentary republic";
+    else if (rel == "state") t = "Confessional parliamentary republic";
+    else if (c.referendum && c.territory == "federal" && demo) t = "Federal direct democracy";
+    else if (c.referendum && demo) t = "Parliamentary republic with direct democracy";
+    else if (!c.confidenceRule) t = "Fixed-term parliamentary republic";
+    else t = "Parliamentary republic";
+  }
+  var all = c.partySystem == "single" && c.press == "state" && c.assembly == "banned" && c.judiciary == "controlled";
+  if (all) t = "Totalitarian " + t.charAt(0).toLowerCase() + t.slice(1);
+  if (all) t = t;
+  else if (c.elections == "restricted") t = "Electoral autocracy (" + t.toLowerCase() + ")";
+  else if (c.elections == "none" && (ex == "pm" || ex == "council")) t = "Authoritarian " + t.toLowerCase();
+  if (c.territory == "federal" && t.indexOf("ederal") < 0 && t.indexOf("onfederal") < 0) t += ", federal";
+  if (c.economy == "planned" && t.indexOf("command") < 0 && t.indexOf("Workers") < 0 && t.indexOf("Vanguard") < 0) t += ", planned economy";
   return t;
+}
+function govHallmarks(c) {
+  var a = [];
+  if (c.executive == "monarch" || c.headOfState == "monarch_const" || c.headOfState == "monarch_abs") a.push({ hereditary: "a hereditary throne", elective: "kings chosen by the nobles", designated: "an heir picked by the ruler", none: "a crown with no succession law" }[c.succession || "none"]);
+  if (c.nobility == "titles") a.push("lords and ladies in name only");
+  if (c.nobility == "privileged") a.push("a privileged nobility");
+  if (c.nobility == "ruling") a.push("nobles in every top job");
+  if (c.chambers == 2) a.push({ regional: "a senate of the regions", elected: "an elected senate", appointed: "an appointed upper house", hereditary: "a house of hereditary lords", estates: "an assembly of the estates" }[c.upperHouse]);
+  if (c.legislature == "none") a.push("no parliament at all");
+  else if (c.legPower == "rubber") a.push("a rubber-stamp parliament");
+  if (c.religion == "state") a.push("an official state faith");
+  if (c.religion == "secular") a.push("a strictly secular state");
+  if (c.referendum && amendRouteFor(c) != "decree") a.push("referendums on the constitution");
+  if (c.electionSystem == "fptp" && c.elections != "none") a.push("winner-takes-all districts");
+  if (c.votingAge <= 16) a.push("votes at 16");
+  if (c.votingAge >= 21) a.push("votes only from 21");
+  if (c.termLimit == 1) a.push("a single term for the leader");
+  if (c.termYears >= 6) a.push("long " + c.termYears + "-year terms");
+  if (c.termYears <= 2) a.push("elections every " + c.termYears + " years");
+  if (c.press == "state") a.push("state-run media");
+  if (c.assembly == "banned") a.push("protests banned");
+  if (c.emergency == "broad") a.push("rule by decree in emergencies");
+  if (c.fiscalRule > 0) a.push("a " + c.fiscalRule + "% deficit cap");
+  if (!c.centralBankIndependent) a.push("a central bank under the government");
+  if (c.amendThreshold >= 0.75) a.push("a constitution that is very hard to change");
+  if (c.amendThreshold <= 0.5) a.push("a constitution any majority can rewrite");
+  if (c.territory == "devolved") a.push("devolved regions");
+  return a;
 }
 function amendmentText(c) {
   var route = amendRouteFor(c);
@@ -7594,6 +7683,8 @@ function readConstForm(prefix, into) {
 function constSummaryHtml(fg) {
   var c = fg.constitution, di = democracyIndex(fg);
   var h = "<div class='notice'><b>Your state:</b> " + esc(c.govType) + ". You will be the <b>" + esc(c.title) + "</b>.<br>";
+  var hm = govHallmarks(c);
+  if (hm.length) h += "Known for " + (hm.length > 1 ? hm.slice(0, -1).join(", ") + " and " + hm[hm.length - 1] : hm[0]) + ".<br>";
   h += "Democracy index: <b>" + Math.round(di) + "/100</b> (" + diLabel(di) + "). ";
   h += "Laws are made " + (decreeMode(fg) ? "<b>by decree</b>" : (c.legPower == "advisory" ? "by the legislature, but you can <b>override</b> it" : "by a <b>vote in the legislature</b>")) + ". ";
   h += "Changing the constitution: " + esc(c.amendmentText) + ".<br>";
@@ -9961,6 +10052,7 @@ function drawShell() {
   $("flag").innerHTML = flagHtml(g.country, 45, 30);
   $("header").style.background = g.country.useColors && g.country.colors ? g.country.colors[0] : "";
   $("countryname").innerHTML = esc(g.country.name);
+  g.constitution.govType = describeGov(g.constitution);
   $("subline").innerHTML = (g.country.motto ? "<i>" + esc(g.country.motto) + "</i> | " : "") + esc(g.constitution.govType) + " | " + esc(g.constitution.title) + ": " + esc(g.leaderName) + " (" + esc(playerParty(g).name) + ")";
   $("datebox").innerHTML = "<b>Week " + g.week + "</b> - " + weekDate(g) + " (week " + weekOfYear(g) + " of " + weekYear(g) + ")";
   $("adv1").disabled = $("adv4").disabled = $("adv13").disabled = !!g.gameOver && g.difficulty != "sandbox";
