@@ -216,6 +216,31 @@ body.theme-grey #nav .navhead { background: #999999; }
 body.theme-grey #topbar { background: #DDDDDD; border-bottom-color: #999999; }
 body.theme-grey .briefing { border-left-color: #333333; }
 body.theme-grey .wtabs { background: #E8E8E8; border-color: #BBBBBB; }
+.ic { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vertical-align: -2px; margin-right: 5px; color: #17345B; }
+.ic .icf { fill: currentColor; stroke: none; }
+.ich1 { vertical-align: -3px; margin-right: 7px; }
+#nav li a .ic { color: #17345B; opacity: 0.85; }
+#nav li a.current .ic { color: #fff; opacity: 1; }
+#menubtn .ic { color: inherit; margin-right: 2px; }
+.banner { width: 100%; height: 130px; overflow: hidden; margin: 0 0 10px 0; border: 1px solid #bbb; background: #eee; }
+.banner img { width: 100%; height: 100%; object-fit: cover; display: block; max-width: none; }
+.paperlogo { vertical-align: middle; margin-right: 5px; max-width: 160px; object-fit: contain; }
+.regioncards { margin: 4px 0 10px 0; }
+.regioncard { display: inline-block; vertical-align: top; width: 152px; margin: 0 8px 8px 0; font-size: 12px; }
+.regioncard .picslot { margin-bottom: 3px; }
+body.theme-green .ic, body.theme-green #nav li a .ic { color: #1E5631; }
+body.theme-red .ic, body.theme-red #nav li a .ic { color: #7A1B1B; }
+body.theme-purple .ic, body.theme-purple #nav li a .ic { color: #4B2A6B; }
+body.theme-teal .ic, body.theme-teal #nav li a .ic { color: #14545A; }
+body.theme-orange .ic, body.theme-orange #nav li a .ic { color: #8A4A0F; }
+body.theme-grey .ic, body.theme-grey #nav li a .ic { color: #333333; }
+body #nav li a.current .ic { color: #fff; }
+body #menubtn .ic { color: inherit; }
+@media (max-width: 700px) {
+  .banner { height: 80px; }
+  .regioncard { width: 46%; margin-right: 3%; }
+  .regioncard .picslot { width: 100% !important; }
+}
 
 </style>
 </head>
@@ -5429,11 +5454,24 @@ function newsPicName(type) {
 function picSlot(names, w, hh, style) {
   var list = [];
   for (var i = 0; i < names.length; i++) { list.push(names[i] + ".jpg"); list.push(names[i] + ".jpeg"); list.push(names[i] + ".png"); list.push(names[i] + ".webp"); }
+  list = notMissing(list);
+  if (!list.length) return "";
   return "<span class='picslot' style='display:inline-block;width:" + w + "px;height:" + hh + "px;overflow:hidden;border:1px solid #bbb;background:#eee;" + (style || "") + "'><img src='" + list[0] + "' data-l='" + list.join("|") + "' data-i='0' alt='' onerror='picNext(this)' style='width:100%;height:100%;object-fit:cover;display:block;max-width:none'></span>";
+}
+var PIC_MISSING = {};
+function notMissing(list) {
+  var keep = [];
+  for (var i = 0; i < list.length; i++) if (!PIC_MISSING[list[i]]) keep.push(list[i]);
+  return keep;
 }
 function picNext(img) {
   var L = img.getAttribute("data-l").split("|"), i = parseInt(img.getAttribute("data-i")) + 1;
-  if (i >= L.length) { img.parentNode.style.display = "none"; return; }
+  PIC_MISSING[L[i - 1]] = true;
+  if (i >= L.length) {
+    if (img.className == "paperlogo") img.style.display = "none";
+    else img.parentNode.style.display = "none";
+    return;
+  }
   img.setAttribute("data-i", i); img.src = L[i];
 }
 function newsPic(a, w, hh, style) { return picSlot(["images/news/" + newsPicName(a.type), "images/news/general"], w, hh, style); }
@@ -5539,7 +5577,7 @@ PAGES.dashboard = function () {
   h += "</td><td valign=top>";
   h += "<h2>Today's front pages</h2>";
   var news = frontPages(g);
-  for (var i = 0; i < news.length; i++) h += "<div class='article'><span class='outletname'>" + outletName(news[i].outlet) + "</span><br><a href='#article/" + news[i].id + "'>" + esc(news[i].headline) + "</a></div>";
+  for (var i = 0; i < news.length; i++) h += "<div class='article'>" + newsPic(news[i], 60, 40, "float:left;margin:2px 6px 2px 0") + "<span class='outletname'>" + paperLogo(news[i].outlet, 12) + outletName(news[i].outlet) + "</span><br><a href='#article/" + news[i].id + "'>" + esc(news[i].headline) + "</a><div style='clear:both'></div></div>";
   h += "<p><a href='#news'>More news &raquo;</a></p></td></tr></table>";
   h += "<h2>What happened this week</h2>";
   var evs = g.events.filter(function (e) { return e.week == g.week; });
@@ -5564,7 +5602,7 @@ PAGES.cabinet = function (arg) {
       h += "<tr class='small'><td>" + esc(ministryName(m.ministry)) + "</td><td colspan=6><i>Merged into " + esc(ministryName(m.mergedInto)) + "</i>" + (line ? " (budget " + money(g, line) + ")" : "") + "</td><td><a href='javascript:doSplit(\"" + m.ministry + "\")'>Split off</a></td></tr>";
       continue;
     }
-    h += "<tr><td>" + ministryPic(m.ministry, 48, 32, "float:left;margin-right:6px") + esc(ministryName(m.ministry)) + (m.load ? " <span class='small'>(+" + m.load + " merged)</span>" : "") + "</td><td>" + esc(m.name) + "</td><td>" + esc(findParty(g, m.party).name) + "</td><td class='num'>" + Math.round(m.competence * 100) + "</td><td class='num'>" + pct(clamp(m.approval, 0, 1), 0) + "</td><td class='num'>" + (line ? money(g, line) : "-") + "</td><td>" + weekDate(g, m.since) + "</td>";
+    h += "<tr><td>" + ministryPic(m.ministry, 48, 32, "float:left;margin-right:6px") + esc(ministryName(m.ministry)) + (m.load ? " <span class='small'>(+" + m.load + " merged)</span>" : "") + "</td><td>" + personPic(m.name, 26, 32, "float:left;margin-right:5px") + esc(m.name) + "</td><td>" + esc(findParty(g, m.party).name) + "</td><td class='num'>" + Math.round(m.competence * 100) + "</td><td class='num'>" + pct(clamp(m.approval, 0, 1), 0) + "</td><td class='num'>" + (line ? money(g, line) : "-") + "</td><td>" + weekDate(g, m.since) + "</td>";
     h += "<td class='small'><a href='#cabinet/" + m.ministry + "'>Replace</a> | <a href='javascript:doRename(\"" + m.ministry + "\")'>Rename</a> | <a href='javascript:doMerge(\"" + m.ministry + "\")'>Merge</a></td></tr>";
   }
   h += "</table><p class='small'>Merging a ministry saves some admin money, but one minister doing two jobs is less effective. Renaming is free.</p>";
@@ -6106,6 +6144,7 @@ PAGES.services = function (arg) {
   var def = null; for (var i = 0; i < SERVICES.length; i++) if (SERVICES[i].id == id) def = SERVICES[i];
   var s = g.services[id];
   var min = minister(g, id == "police" ? "interior" : id);
+  h += servicePic(id, 200, 120, "float:right;margin:0 0 8px 12px");
   h += "<p>Capacity depends on <b>staff</b> (who take time to recruit) and <b>equipment and buildings</b>. Building a hospital without staff doesn't create capacity. Minister: " + esc(min.name) + " (competence " + Math.round(min.competence * 100) + ").</p>";
   h += "<table class='data'>";
   h += "<tr><td>Funding (annual)</td><td class='num'>" + money(g, g.budget.lines[def.line]) + (id == "health" && g.flows.programmes.staff ? " + staffing programme " + money(g, g.flows.programmes.staff) : "") + "</td></tr>";
@@ -6142,7 +6181,7 @@ PAGES.elections = function (arg) {
   if (electionsHeld(g)) h += "<p>Next " + (g.politics.snapElection ? "<b>snap</b> " : "") + "general election: <b>" + weekDate(g, due) + "</b> (" + (due - g.week) + " weeks). System: " + electionSystemName(g.constitution.electionSystem) + ".</p>";
   h += "<h2>Opinion polls</h2>" + seatBar(g, g.parties.map(function (p) { return Math.round(p.poll * g.constitution.seats); })) + "<p class='small'>Bar shows what a uniform proportional result would look like.</p>";
   h += "<table class='data'><tr><th>Party</th><th class='num'>Poll</th><th class='num'>Seats now</th><th>Leader</th><th class='num'>Members</th></tr>";
-  for (var i = 0; i < g.parties.length; i++) { var p = g.parties[i]; h += "<tr><td><span style='color:" + p.color + "'>&#9632;</span> " + esc(p.name) + "</td><td class='num'>" + pct(p.poll) + "</td><td class='num'>" + p.seats + "</td><td>" + esc(p.leader) + "</td><td class='num'>" + p.members.toLocaleString() + "</td></tr>"; }
+  for (var i = 0; i < g.parties.length; i++) { var p = g.parties[i]; h += "<tr><td>" + partyPic(g, p, 40, 28, "float:left;margin-right:5px") + "<span style='color:" + p.color + "'>&#9632;</span> " + esc(p.name) + "</td><td class='num'>" + pct(p.poll) + "</td><td class='num'>" + p.seats + "</td><td>" + personPic(p.leader, 22, 28, "float:left;margin-right:5px") + esc(p.leader) + "</td><td class='num'>" + p.members.toLocaleString() + "</td></tr>"; }
   h += "</table>";
   h += "<canvas class='chart' id='c_polls' width=600 height=180></canvas>";
   h += "<div class='small'>" + g.parties.map(function (p, i) { return "<span style='color:" + p.color + "'>&#9632;&#9632;</span> " + esc(p.name); }).join(" &nbsp; ") + "</div>";
@@ -6171,7 +6210,11 @@ PAGES.elections = function (arg) {
 };
 PAGES.regions = function () {
   var g = game;
-  var h = title("Regions") + regionTable(g);
+  var h = title("Regions");
+  h += "<div class='regioncards'>";
+  for (var r = 0; r < g.regions.length; r++) h += "<div class='regioncard'>" + regionPic(g, r, 150, 90, "") + "<br><b>" + icon("map", 12) + " " + esc(g.regions[r].name) + "</b><br><span class='small'>" + g.regions[r].pop.toFixed(2) + "m people &middot; " + g.regions[r].seats + " seats</span></div>";
+  h += "</div>";
+  h += regionTable(g);
   h += "<h2>Latest regional polling</h2><table class='data full'><tr><th>Region</th>" + g.parties.map(function (p) { return "<th class='num'>" + esc(p.name) + "</th>"; }).join("") + "</tr>";
   for (var r = 0; r < g.regions.length; r++) {
     var sh = nationalShares(g, r);
@@ -6212,7 +6255,7 @@ PAGES.defence = function () {
   h += "<tr><td>Conscription</td><td class='num'>" + (g.policies.conscription.active ? g.policies.conscription.value + " months" : "none") + "</td></tr>";
   h += "<tr><td>Minister</td><td>" + esc(minister(g, "defence").name) + " (competence " + Math.round(minister(g, "defence").competence * 100) + ")</td></tr></table>";
   h += "<h2>Service branches</h2><table class='data full'><tr><th>Branch</th><th class='num'>Personnel</th><th class='num'>Equipment condition</th></tr>";
-  for (var i = 0; i < d.branches.length; i++) h += "<tr><td>" + d.branches[i].name + "</td><td class='num'>" + Math.round(d.branches[i].personnel * 1000 * (1 + (g.policies.conscription.active ? g.policies.conscription.value * 0.03 : 0))).toLocaleString() + "</td><td class='num'>" + d.branches[i].equipment.toFixed(0) + "/100</td></tr>";
+  for (var i = 0; i < d.branches.length; i++) h += "<tr><td>" + branchPic(d.branches[i].name, 48, 32, "float:left;margin-right:6px") + d.branches[i].name + "</td><td class='num'>" + Math.round(d.branches[i].personnel * 1000 * (1 + (g.policies.conscription.active ? g.policies.conscription.value * 0.03 : 0))).toLocaleString() + "</td><td class='num'>" + d.branches[i].equipment.toFixed(0) + "/100</td></tr>";
   h += "</table><p class='small'>Readiness follows funding, training, conscription and the minister's competence. Equipment wears out if procurement and maintenance are underfunded. Change the budget on the <a href='#treasury/bill'>Treasury</a> page.</p>";
   var pacts = g.online && g.online.links ? g.online.links.filter(function (x) { return x.kind == "defence"; }).length : 0;
   h += "<h2>Security situation</h2><p>No foreign army threatens us: the only other countries are real players. Defence pacts with players: <b>" + pacts + "</b>" + (pacts ? "" : " (<a href='#world/nations'>find an ally</a>)") + ".</p>";
@@ -6226,6 +6269,7 @@ PAGES.event = function (id) {
   for (var i = 0; i < g.events.length; i++) if (g.events[i].id == id) ev = g.events[i];
   if (!ev) return title("Event not found");
   var h = title("Event record " + ev.id);
+  h += newsPic({ type: ev.type }, 240, 150, "float:right;margin:0 0 8px 12px");
   h += "<table class='data'><tr><th>Event</th><td>" + esc(ev.title) + "</td></tr><tr><th>Type</th><td>" + ev.type + "</td></tr><tr><th>Severity</th><td>" + ["", "Low", "Medium", "High"][ev.severity] + (ev.urgent ? " - URGENT" : "") + "</td></tr>";
   h += "<tr><th>Date</th><td>" + ev.date + " (week " + ev.week + ")</td></tr>";
   if (ev.region !== null) h += "<tr><th>Location</th><td>" + esc(g.regions[ev.region].name) + "</td></tr>";
@@ -6387,6 +6431,177 @@ PAGES.help = function () {
   h += "<h2>Keyboard</h2><p>Tab moves between links and buttons. N advances one week.</p>";
   return h;
 };
+
+</script>
+<script>
+var ICONS = {
+  home: "<path d='M3 11 L12 3 L21 11'/><path d='M5 10 V20 H19 V10'/><path d='M10 20 V14 H14 V20'/>",
+  cabinet: "<rect x='3' y='7' width='18' height='13' rx='2'/><path d='M9 7 V4 H15 V7'/><path d='M3 13 H21'/>",
+  parliament: "<path d='M2 9 L12 3 L22 9 Z'/><path d='M5 11 V18 M9.5 11 V18 M14.5 11 V18 M19 11 V18'/><path d='M3 21 H21'/>",
+  pen: "<path d='M4 20 L8 19 L19 8 L16 5 L5 16 Z'/><path d='M14 7 L17 10'/>",
+  scales: "<path d='M12 3 V20 M5 6 H19 M8 21 H16'/><path d='M5 6 L2 13 H8 Z M19 6 L16 13 H22 Z'/>",
+  ballot: "<rect x='3' y='11' width='18' height='10' rx='1'/><path d='M8 11 V3 H16 V11'/><path d='M10 7 L11.5 8.5 L14 5.5'/>",
+  economy: "<path d='M3 17 L9 11 L13 15 L21 7'/><path d='M15 7 H21 V13'/>",
+  money: "<rect x='2' y='6' width='20' height='12' rx='1'/><circle cx='12' cy='12' r='3'/><path d='M6 9 V15 M18 9 V15'/>",
+  people: "<circle cx='9' cy='8' r='3'/><path d='M3 20 C3 16 6 14 9 14 C12 14 15 16 15 20'/><circle cx='17' cy='9' r='2.5'/><path d='M16 14 C19 14 21 16 21 19'/>",
+  health: "<rect x='3' y='3' width='18' height='18' rx='2'/><path d='M12 7 V17 M7 12 H17'/>",
+  clipboard: "<rect x='5' y='4' width='14' height='17' rx='1'/><rect x='9' y='2' width='6' height='4' rx='1'/><path d='M8 11 H16 M8 15 H14'/>",
+  megaphone: "<path d='M3 10 V14 H7 L15 19 V5 L7 10 Z'/><path d='M18 9 C20 10.5 20 13.5 18 15'/>",
+  map: "<path d='M3 6 L9 3 L15 6 L21 3 V18 L15 21 L9 18 L3 21 Z'/><path d='M9 3 V18 M15 6 V21'/>",
+  flag: "<path d='M5 21 V3'/><path d='M5 4 H18 L16 8 L18 12 H5'/>",
+  card: "<rect x='3' y='5' width='18' height='14' rx='2'/><circle cx='8' cy='11' r='2'/><path d='M5 16 C5 14 11 14 11 16 M14 10 H18 M14 14 H18'/>",
+  globe: "<circle cx='12' cy='12' r='9'/><ellipse cx='12' cy='12' rx='4' ry='9'/><path d='M3 12 H21'/>",
+  shield: "<path d='M12 3 L20 6 V12 C20 17 16 20 12 21 C8 20 4 17 4 12 V6 Z'/>",
+  news: "<rect x='3' y='4' width='15' height='16' rx='1'/><path d='M18 8 H21 V18 C21 19 20 20 19 20 H17'/><path d='M6 8 H15 M6 12 H15 M6 16 H12'/>",
+  bars: "<path d='M3 20 H21 M6 20 V12 M12 20 V6 M18 20 V15'/>",
+  archive: "<rect x='3' y='4' width='18' height='5' rx='1'/><path d='M5 9 V20 H19 V9'/><path d='M10 13 H14'/>",
+  sliders: "<path d='M4 6 H20 M4 12 H20 M4 18 H20'/><circle cx='9' cy='6' r='2' class='icf'/><circle cx='15' cy='12' r='2' class='icf'/><circle cx='7' cy='18' r='2' class='icf'/>",
+  bulb: "<path d='M9 18 H15 M10 21 H14'/><path d='M12 3 C8.7 3 6 5.7 6 9 C6 11 7 12.5 8 13.5 C9 14.5 9 15 9 16 H15 C15 15 15 14.5 16 13.5 C17 12.5 18 11 18 9 C18 5.7 15.3 3 12 3 Z'/>",
+  star: "<path d='M12 3 L14.6 9 L21 9.3 L16 13.5 L17.6 20 L12 16.5 L6.4 20 L8 13.5 L3 9.3 L9.4 9 Z'/>",
+  person: "<circle cx='12' cy='8' r='4'/><path d='M4 21 C4 16 8 14 12 14 C16 14 20 16 20 21'/>",
+  trophy: "<path d='M7 4 H17 V9 C17 12 15 14 12 14 C9 14 7 12 7 9 Z'/><path d='M7 6 H4 V7 C4 9 5.5 10 7 10 M17 6 H20 V7 C20 9 18.5 10 17 10'/><path d='M12 14 V18 M8 21 H16 M9 18 H15'/>",
+  mail: "<rect x='3' y='5' width='18' height='14' rx='1'/><path d='M3 6 L12 13 L21 6'/>",
+  treaty: "<path d='M6 3 H15 L19 7 V21 H6 Z'/><path d='M15 3 V7 H19'/><path d='M9 11 H16 M9 14 H13'/><circle cx='15' cy='17' r='2'/>",
+  org: "<circle cx='6' cy='7' r='2.5'/><circle cx='18' cy='7' r='2.5'/><circle cx='12' cy='18' r='2.5'/><path d='M8.5 7 H15.5 M7.3 9.2 L10.8 15.8 M16.7 9.2 L13.2 15.8'/>",
+  chat: "<path d='M4 5 H20 V15 H10 L6 19 V15 H4 Z'/><path d='M8 9 H16 M8 12 H13'/>",
+  cap: "<path d='M2 9 L12 4 L22 9 L12 14 Z'/><path d='M6 11 V16 C9 18 15 18 18 16 V11'/><path d='M22 9 V15'/>",
+  book: "<path d='M4 4 H10 C11 4 12 5 12 6 V20 C12 19 11 18 10 18 H4 Z'/><path d='M20 4 H14 C13 4 12 5 12 6 V20 C12 19 13 18 14 18 H20 Z'/>",
+  help: "<circle cx='12' cy='12' r='9'/><path d='M9.5 9.5 C9.5 7.5 12 6.5 13.5 7.5 C15 8.5 14.5 10.5 13 11.2 C12.2 11.6 12 12.2 12 13.5'/><circle cx='12' cy='17' r='0.8' class='icf'/>",
+  up: "<path d='M12 20 V5 M6 11 L12 5 L18 11'/>",
+  play: "<path d='M5 5 L12 12 L5 19 Z M12 5 L19 12 L12 19 Z'/>",
+  clock: "<circle cx='12' cy='12' r='9'/><path d='M12 7 V12 L15 14'/>",
+  alert: "<path d='M12 3 L22 20 H2 Z'/><path d='M12 9 V14'/><circle cx='12' cy='17' r='0.8' class='icf'/>",
+  leaf: "<path d='M5 19 C5 10 11 5 20 4 C19 13 14 19 5 19 Z'/><path d='M5 19 L13 11'/>",
+  wheat: "<path d='M12 21 V8'/><path d='M12 8 C9 7 9 4 9 3 C11 3 12 5 12 8 C12 5 13 3 15 3 C15 4 15 7 12 8'/><path d='M12 13 C9 12 8 10 8 9 C10 9 12 11 12 13 C12 11 14 9 16 9 C16 10 15 12 12 13'/>",
+  hourglass: "<path d='M6 3 H18 M6 21 H18'/><path d='M7 3 C7 9 17 15 17 21 M17 3 C17 9 7 15 7 21'/>",
+  dove: "<path d='M3 13 C6 13 8 11 10 8 C11 6 13 5 15 5 C17 5 18 6 19 7 L22 7 L19 9 C19 14 15 18 9 18 C6 18 4 16 3 13 Z'/><circle cx='16' cy='7.5' r='0.7' class='icf'/>",
+  factory: "<path d='M3 21 V10 L9 13 V10 L15 13 V4 H19 V21 Z'/><path d='M3 21 H21'/><path d='M7 17 H9 M12 17 H14'/>",
+  tv: "<rect x='3' y='6' width='18' height='13' rx='1'/><path d='M8 2 L12 6 L16 2'/>",
+  menu: "<path d='M4 6 H20 M4 12 H20 M4 18 H20'/>",
+  link: "<path d='M10 14 L14 10'/><path d='M9 7 L11 5 C13 3 16 3 18 5 C20 7 20 10 18 12 L16 14'/><path d='M15 17 L13 19 C11 21 8 21 6 19 C4 17 4 14 6 12 L8 10'/>"
+};
+
+var PAGE_ICONS = {
+  dashboard: "home", cabinet: "cabinet", parliament: "parliament", bill: "parliament", lawmaker: "pen", law: "scales", elections: "ballot",
+  economy: "economy", treasury: "money", population: "people", services: "health", agencies: "clipboard", stakeholders: "megaphone", regions: "map",
+  identity: "flag", profile: "card", foreign: "globe", diplomacy: "globe", defence: "shield", news: "news", article: "news", stats: "bars", chart: "bars", why: "bars",
+  archive: "archive", event: "archive", settings: "sliders", ideology: "bulb", movement: "star", leader: "person", scorecard: "trophy",
+  world: "globe", learn: "cap", glossary: "book", help: "help", newgame: "flag"
+};
+var WORLD_ICONS = { "": "globe", nations: "flag", nation: "flag", mail: "mail", treaties: "treaty", orgs: "org", org: "org", news: "news", forum: "chat", thread: "chat", account: "person", admin: "shield" };
+var GROUP_ICONS = { unions: "people", business: "cabinet", farmers: "wheat", faith: "dove", greens: "leaf", students: "cap", pensioners: "hourglass" };
+
+function icon(name, size, cls) {
+  if (!ICONS[name]) return "";
+  if (!size) size = 16;
+  var c = "ic";
+  if (cls) c = "ic " + cls;
+  return "<svg class='" + c + "' width='" + size + "' height='" + size + "' viewBox='0 0 24 24' aria-hidden='true'>" + ICONS[name] + "</svg>";
+}
+
+function iconForHref(href) {
+  var h = href.replace("#", "");
+  var parts = h.split("/");
+  if (parts[0] == "world") {
+    var sub = parts[1] || "";
+    if (WORLD_ICONS[sub]) return WORLD_ICONS[sub];
+    return "globe";
+  }
+  if (PAGE_ICONS[parts[0]]) return PAGE_ICONS[parts[0]];
+  return "";
+}
+
+function addNavIcons() {
+  var links = document.querySelectorAll("#nav a");
+  for (var i = 0; i < links.length; i++) {
+    var a = links[i];
+    if (a.getAttribute("data-ic")) continue;
+    var name = iconForHref(a.getAttribute("href") || "");
+    if (!name) continue;
+    a.innerHTML = icon(name, 14) + a.innerHTML;
+    a.setAttribute("data-ic", "1");
+  }
+  var mb = $("menubtn");
+  if (mb && !mb.getAttribute("data-ic")) {
+    mb.innerHTML = icon("menu", 14) + " Menu";
+    mb.setAttribute("data-ic", "1");
+  }
+}
+
+function addTitleIcon(html, page, arg) {
+  var name = PAGE_ICONS[page];
+  if (page == "world") {
+    var sub = String(arg || "").split("/")[0];
+    if (WORLD_ICONS[sub]) name = WORLD_ICONS[sub];
+  }
+  if (!name) return html;
+  var at = html.indexOf("<h1>");
+  if (at < 0) return html;
+  return html.slice(0, at + 4) + icon(name, 22, "ich1") + html.slice(at + 4);
+}
+
+function addLinkIcons(box) {
+  var links = box.querySelectorAll(".quicklinks a, .pagefoot a");
+  for (var i = 0; i < links.length; i++) {
+    var a = links[i];
+    var href = a.getAttribute("href") || "";
+    var name = "";
+    if (href.indexOf("javascript:window.scrollTo") == 0) name = "up";
+    else if (href.indexOf("javascript:advance") == 0) name = "play";
+    else if (href.charAt(0) == "#") name = iconForHref(href);
+    if (name) a.innerHTML = icon(name, 13) + a.innerHTML;
+  }
+}
+
+function slug(text) {
+  return String(text).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+function pageBanner(page, arg) {
+  var names = [];
+  if (page == "world") {
+    var sub = String(arg || "").split("/")[0];
+    if (sub) names.push("images/pages/world-" + sub);
+  }
+  if (page == "services" || page == "law" || page == "news") {
+    var sub2 = String(arg || "").split("/")[0].split("=")[0];
+    if (sub2 && sub2 != "outlet" && sub2 != "topic") names.push("images/pages/" + page + "-" + sub2);
+  }
+  names.push("images/pages/" + page);
+  var list = [];
+  for (var i = 0; i < names.length; i++) {
+    list.push(names[i] + ".jpg"); list.push(names[i] + ".jpeg"); list.push(names[i] + ".png"); list.push(names[i] + ".webp");
+  }
+  list = notMissing(list);
+  if (!list.length) return "";
+  return "<div class='banner'><img src='" + list[0] + "' data-l='" + list.join("|") + "' data-i='0' alt='' onerror='picNext(this)'></div>";
+}
+
+var NO_BANNER = { article: 1, event: 1, bill: 1, chart: 1, why: 1 };
+
+function personPic(name, w, hh, style) {
+  var n = 0;
+  var s = String(name);
+  for (var i = 0; i < s.length; i++) n = (n * 31 + s.charCodeAt(i)) % 1000;
+  var num = (n % 12) + 1;
+  return picSlot(["images/people/" + slug(name), "images/people/person-" + num], w, hh, style);
+}
+function groupPic(id, w, hh, style) { return picSlot(["images/groups/" + id], w, hh, style); }
+function paperLogo(id, hh) {
+  var list = notMissing(["images/papers/" + id + ".png", "images/papers/" + id + ".jpg", "images/papers/" + id + ".webp"]);
+  if (!list.length) return "";
+  return "<img class='paperlogo' src='" + list[0] + "' data-l='" + list.join("|") + "' data-i='0' alt='' onerror='picNext(this)' style='height:" + hh + "px'>";
+}
+function regionPic(g, r, w, hh, style) {
+  return picSlot(["images/regions/" + slug(g.regions[r].name), "images/regions/region-" + (r + 1)], w, hh, style);
+}
+function branchPic(name, w, hh, style) { return picSlot(["images/defence/" + slug(name)], w, hh, style); }
+function servicePic(id, w, hh, style) { return picSlot(["images/services/" + id], w, hh, style); }
+function partyPic(g, p, w, hh, style) {
+  var at = 1;
+  for (var i = 0; i < g.parties.length; i++) if (g.parties[i] == p) at = i + 1;
+  return picSlot(["images/parties/" + slug(p.name), "images/parties/party-" + at], w, hh, style);
+}
 
 </script>
 <script>
@@ -7112,7 +7327,7 @@ PAGES.news = function (arg) {
   if (!arts.length) h += "<p>No stories match.</p>";
   for (var i = 0; i < arts.length; i++) {
     var a = arts[i];
-    h += "<div class='article'>" + newsPic(a, 80, 55, "float:left;margin:2px 8px 2px 0") + "<span class='outletname'>" + outletName(a.outlet) + " &middot; " + a.date + (a.kind == "editorial" ? " &middot; OPINION" : "") + (a.answered ? " &middot; you replied" : "") + "</span><br><span class='hl'><a href='#article/" + a.id + "'>" + esc(a.headline) + "</a></span><br><span class='small'>" + esc((a.standfirst ? a.standfirst + " " : "") + a.body.replace(/\n\n/g, " ").slice(0, 150)) + "...</span></div>";
+    h += "<div class='article'>" + newsPic(a, 80, 55, "float:left;margin:2px 8px 2px 0") + "<span class='outletname'>" + paperLogo(a.outlet, 14) + outletName(a.outlet) + " &middot; " + a.date + (a.kind == "editorial" ? " &middot; OPINION" : "") + (a.answered ? " &middot; you replied" : "") + "</span><br><span class='hl'><a href='#article/" + a.id + "'>" + esc(a.headline) + "</a></span><br><span class='small'>" + esc((a.standfirst ? a.standfirst + " " : "") + a.body.replace(/\n\n/g, " ").slice(0, 150)) + "...</span></div>";
   }
   h += "</td><td valign=top>";
   h += pledgePanel(g);
@@ -7167,7 +7382,7 @@ PAGES.article = function (id) {
   if (!a) return title("Article not found") + "<p>It may have been archived. <a href='#news'>Back to news</a></p>";
   var o = null; for (var i = 0; i < OUTLETS.length; i++) if (OUTLETS[i].id == a.outlet) o = OUTLETS[i];
   if (!o) o = { id: a.outlet, name: outletName(a.outlet), type: "Party newspaper", lean: 50, sensational: 0, reliability: "Partisan" };
-  var h = "<div class='outletname'>" + o.name + " &middot; " + o.type + " &middot; " + a.date + (a.kind == "editorial" ? " &middot; OPINION" : "") + "</div>";
+  var h = "<div class='outletname'>" + paperLogo(o.id, 28) + o.name + " &middot; " + o.type + " &middot; " + a.date + (a.kind == "editorial" ? " &middot; OPINION" : "") + "</div>";
   h += "<h1>" + esc(a.headline) + "</h1>";
   h += newsPic(a, 320, 200, "float:right;margin:0 0 8px 12px");
   if (a.standfirst) h += "<p><i>" + esc(a.standfirst) + "</i></p>";
@@ -7644,7 +7859,7 @@ PAGES.stakeholders = function () {
   h += "<table class='data full'><tr><th>Group</th><th>Relations</th><th>Mood</th><th>Deal now</th><th></th></tr>";
   for (var i = 0; i < STAKEHOLDERS.length; i++) {
     var st = STAKEHOLDERS[i], s = S[st.id];
-    h += "<tr><td><b>" + st.name + "</b><br><span class='small'>" + st.who + "</span></td><td class='num'>" + Math.round(s.rel) + " <span class='bar' style='width:" + Math.round(s.rel / 2) + "px;background:" + (s.rel < 25 ? "#C8102E" : (s.rel > 60 ? "#2E8B57" : "#999")) + "'></span></td><td>" + moodWord(s.rel) + (s.trouble ? " <b class='bad'>(taking action!)</b>" : "") + "</td>";
+    h += "<tr><td>" + groupPic(st.id, 60, 40, "float:left;margin-right:6px") + "<b>" + icon(GROUP_ICONS[st.id], 14) + " " + st.name + "</b><br><span class='small'>" + st.who + "</span></td><td class='num'>" + Math.round(s.rel) + " <span class='bar' style='width:" + Math.round(s.rel / 2) + "px;background:" + (s.rel < 25 ? "#C8102E" : (s.rel > 60 ? "#2E8B57" : "#999")) + "'></span></td><td>" + moodWord(s.rel) + (s.trouble ? " <b class='bad'>(taking action!)</b>" : "") + "</td>";
     if (s.deal) { var D = dealInfo(s.deal); h += "<td><b>" + D.name + "</b><br><span class='small'>until " + weekDate(g, s.dealUntil) + "</span></td><td><button onclick='stCancel(\"" + st.id + "\")'>Tear it up</button></td></tr>"; }
     else {
       h += "<td>-</td><td>";
@@ -8776,6 +8991,7 @@ function route() {
     console.log(err);
     html = "<h1>Error</h1><p>Sorry, this page broke: " + esc(err.message) + "</p>";
   }
+  html = addTitleIcon(html, page, arg);
   if (game && page != "newgame") {
     var newly = checkMissions(game, page + (arg ? "/" + arg : ""));
     var extra = missionBar(game, newly) + helpBox(page);
@@ -8783,11 +8999,16 @@ function route() {
     if (at >= 0) { var end = html.indexOf("</div>", at) + 6; html = html.slice(0, end) + extra + html.slice(end); }
     else html = extra + html;
   }
+  if (!NO_BANNER[page]) {
+    var bat = html.indexOf("class='pagedate'");
+    if (bat >= 0) { var bend = html.indexOf("</div>", bat) + 6; html = html.slice(0, bend) + pageBanner(page, arg) + html.slice(bend); }
+  }
   if (game && page != "newgame") {
     rememberPage(page, arg);
     html += pageFootHtml(page, arg);
   }
   $("main").innerHTML = html;
+  addLinkIcons($("main"));
   for (var i = 0; i < afterRender.length; i++) afterRender[i]();
   wrapWideTables();
   var parent = PAGE_PARENT[page];
@@ -9056,6 +9277,7 @@ function setTheme(t) {
 }
 window.onload = function () {
   applyTheme();
+  addNavIcons();
   try {
     var raw = localStorage.getItem("ngs_autosave");
     if (raw) {
