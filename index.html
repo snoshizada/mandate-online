@@ -296,6 +296,16 @@ table.data tr:nth-child(even) td { background: #F5F6F8; }
 #nav li a { line-height: 1.35; }
 .banner { margin-bottom: 14px; }
 
+.jumpbar { background: #F2F4F7; border: 1px solid #D5DAE1; padding: 6px 10px; margin: 0 0 14px 0; font-size: 13px; line-height: 1.7; }
+.jumpbar a { white-space: nowrap; }
+h2.foldh, tr.grprow th { cursor: pointer; user-select: none; }
+h2.foldh .arr:before, tr.grprow .arr:before { content: "\25BE"; display: inline-block; width: 14px; font-size: 12px; }
+h2.foldh.shut .arr:before, tr.grprow.shut .arr:before { content: "\25B8"; }
+h2.foldh.shut { opacity: 0.85; margin-bottom: 6px; }
+h2.foldh:hover { text-decoration: underline; }
+p.clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 2px; }
+a.morelink { display: inline-block; font-size: 12px; margin-bottom: 10px; }
+
 </style>
 </head>
 <body>
@@ -8324,6 +8334,7 @@ function helpBox(page) {
   if (!h || helpHidden(page)) return "";
   var seen = false;
   try { seen = localStorage.getItem("ngs_helpseen_" + page) == "1"; localStorage.setItem("ngs_helpseen_" + page, "1"); } catch (e) { }
+  if (window.innerWidth < 700) seen = true;
   return "<details class='helpbox'" + (seen ? "" : " open") + "><summary><b>About this page</b> <span class='small'>(click to " + (seen ? "open" : "close") + ")</span></summary><a class='helpclose' href='javascript:hideHelp(\"" + page + "\")' title='Never show this box on this page'>[hide for good]</a><b>What is this page?</b> " + h[0] + "<br><b>What can I do here?</b> " + h[1] + (h[2] ? "<br><b>Tip:</b> " + h[2] : "") + "</details>";
 }
 function hideHelp(page) { try { localStorage.setItem("ngs_help_" + page, "hide"); } catch (e) { } route(); }
@@ -9948,6 +9959,7 @@ function route() {
   addLinkIcons($("main"));
   for (var i = 0; i < afterRender.length; i++) afterRender[i]();
   wrapWideTables();
+  tidyPage(page);
   var parent = PAGE_PARENT[page];
   var full = "#" + page;
   if (arg) full = "#" + page + "/" + arg;
@@ -10331,6 +10343,90 @@ window.addEventListener("scroll", function () {
   if (!b) return;
   b.style.display = window.scrollY > 600 ? "block" : "none";
 });
+
+var FOLD_SKIP = { newgame: 1, lawmaker: 1 };
+function loadKey(k) { try { return JSON.parse(localStorage.getItem(k)) || {}; } catch (e) { return {}; } }
+function saveKey(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } }
+function tidyPage(page) {
+  var m = $("main");
+  clampLong(m);
+  foldGroups(m, page);
+  if (FOLD_SKIP[page]) return;
+  var hs = [];
+  for (var i = 0; i < m.children.length; i++) if (m.children[i].tagName == "H2") hs.push(m.children[i]);
+  if (hs.length < 3) return;
+  var saved = loadKey("ngs_fold_" + page), bar = document.createElement("div"), links = [];
+  for (var i = 0; i < hs.length; i++) {
+    var h = hs[i], box = document.createElement("div"), n = h.nextSibling;
+    box.className = "sect"; box.id = "sect" + i;
+    while (n && n.tagName != "H2" && !(n.className && String(n.className).indexOf("pagefoot") >= 0)) { var nx = n.nextSibling; box.appendChild(n); n = nx; }
+    h.parentNode.insertBefore(box, h.nextSibling);
+    h.id = "sh" + i; h.className += " foldh";
+    h.innerHTML = "<span class='arr'></span>" + h.innerHTML;
+    h.setAttribute("data-i", i); h.setAttribute("data-page", page);
+    h.onclick = function (e) { if (e.target.tagName == "A") return; sectToggle(this.getAttribute("data-page"), +this.getAttribute("data-i")); };
+    var shut = saved[i] !== undefined ? saved[i] : (hs.length >= 4 && i >= 3);
+    sectSet(i, shut);
+    links.push("<a href='javascript:sectGo(\"" + page + "\"," + i + ")'>" + esc(h.textContent) + "</a>");
+  }
+  bar.className = "jumpbar";
+  bar.innerHTML = "<b>On this page:</b> " + links.join(" &middot; ") + " <span class='small'>(<a href='javascript:sectAll(\"" + page + "\",false)'>open all</a> | <a href='javascript:sectAll(\"" + page + "\",true)'>close all</a>)</span>";
+  var at = m.querySelector(".pagedate"), n = at ? at.nextElementSibling : hs[0];
+  while (n && n != hs[0] && (n.tagName == "DETAILS" || /mission|banner|help/.test(n.className))) n = n.nextElementSibling;
+  m.insertBefore(bar, n && n.parentNode == m ? n : hs[0]);
+}
+function sectSet(i, shut) {
+  var b = $("sect" + i), h = $("sh" + i);
+  if (!b || !h) return;
+  b.style.display = shut ? "none" : "";
+  h.className = h.className.replace(" shut", "") + (shut ? " shut" : "");
+}
+function sectToggle(page, i) {
+  var saved = loadKey("ngs_fold_" + page), shut = $("sect" + i).style.display != "none";
+  sectSet(i, shut); saved[i] = shut; saveKey("ngs_fold_" + page, saved);
+}
+function sectGo(page, i) {
+  if ($("sect" + i).style.display == "none") sectToggle(page, i);
+  $("sh" + i).scrollIntoView({ behavior: "smooth", block: "start" });
+}
+function sectAll(page, shut) {
+  var saved = {};
+  for (var i = 0; $("sect" + i); i++) { sectSet(i, shut); saved[i] = shut; }
+  saveKey("ngs_fold_" + page, saved);
+}
+function clampLong(m) {
+  var ps = m.querySelectorAll("p");
+  for (var i = 0; i < ps.length; i++) {
+    var p = ps[i];
+    if (p.textContent.length < 330 || p.querySelector("input,select,textarea,button")) continue;
+    p.className += " clamp";
+    var a = document.createElement("a");
+    a.href = "javascript:void(0)"; a.className = "morelink"; a.innerHTML = "Read more &raquo;";
+    a.onclick = function () { var q = this.previousSibling; var open = q.className.indexOf(" clamp") >= 0; q.className = open ? q.className.replace(" clamp", "") : q.className + " clamp"; this.innerHTML = open ? "&laquo; Show less" : "Read more &raquo;"; };
+    p.parentNode.insertBefore(a, p.nextSibling);
+  }
+}
+function foldGroups(m, page) {
+  var ts = m.querySelectorAll("table"), t = 0;
+  for (var k = 0; k < ts.length; k++) {
+    var heads = ts[k].querySelectorAll("th.grouphead");
+    if (heads.length < 3 || ts[k].querySelector("select")) continue;
+    var key = "ngs_grp_" + page + "_" + t, saved = loadKey(key);
+    for (var i = 0; i < heads.length; i++) heads[i].parentNode.className += " grprow";
+    for (var i = 0; i < heads.length; i++) {
+      var row = heads[i].parentNode;
+      row.setAttribute("data-key", key); row.setAttribute("data-i", i);
+      heads[i].innerHTML = "<span class='arr'></span>" + heads[i].innerHTML;
+      row.onclick = function () { var sv = loadKey(this.getAttribute("data-key")), j = this.getAttribute("data-i"), shut = this.className.indexOf(" shut") < 0; grpSet(this, shut); sv[j] = shut; saveKey(this.getAttribute("data-key"), sv); };
+      grpSet(row, saved[i] !== undefined ? saved[i] : i > 0);
+    }
+    t++;
+  }
+}
+function grpSet(row, shut) {
+  row.className = row.className.replace(" shut", "") + (shut ? " shut" : "");
+  for (var r = row.nextElementSibling; r && r.className.indexOf("grprow") < 0; r = r.nextElementSibling) r.style.display = shut ? "none" : "";
+}
 
 </script>
 </body>
