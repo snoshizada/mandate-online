@@ -305,6 +305,10 @@ h2.foldh.shut { opacity: 0.85; margin-bottom: 6px; }
 h2.foldh:hover { text-decoration: underline; }
 p.clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 2px; }
 a.morelink { display: inline-block; font-size: 12px; margin-bottom: 10px; }
+p.clamp { -webkit-line-clamp: 2; }
+a.notelink { display: inline-block; font-size: 12px; color: #667; margin: 2px 0 8px 0; }
+.missionbar { font-size: 12px; padding: 5px 9px; }
+.helpbox:not([open]) { padding-top: 4px; padding-bottom: 4px; }
 
 </style>
 </head>
@@ -8334,7 +8338,7 @@ function helpBox(page) {
   if (!h || helpHidden(page)) return "";
   var seen = false;
   try { seen = localStorage.getItem("ngs_helpseen_" + page) == "1"; localStorage.setItem("ngs_helpseen_" + page, "1"); } catch (e) { }
-  if (window.innerWidth < 700) seen = true;
+  seen = true;
   return "<details class='helpbox'" + (seen ? "" : " open") + "><summary><b>About this page</b> <span class='small'>(click to " + (seen ? "open" : "close") + ")</span></summary><a class='helpclose' href='javascript:hideHelp(\"" + page + "\")' title='Never show this box on this page'>[hide for good]</a><b>What is this page?</b> " + h[0] + "<br><b>What can I do here?</b> " + h[1] + (h[2] ? "<br><b>Tip:</b> " + h[2] : "") + "</details>";
 }
 function hideHelp(page) { try { localStorage.setItem("ngs_help_" + page, "hide"); } catch (e) { } route(); }
@@ -10250,10 +10254,10 @@ document.onkeydown = function (e) {
   if (e.target.tagName == "INPUT" || e.target.tagName == "SELECT" || e.target.tagName == "TEXTAREA") return;
   if (e.key == "n" || e.key == "N") advance(1);
 };
-var NAV_FOLD_START = ["COUNTRY AND WORLD", "NEWS AND RECORDS", "YOUR MOVEMENT", "HELP"];
+var NAV_FOLD_START = ["ECONOMY AND PEOPLE", "COUNTRY AND WORLD", "NEWS AND RECORDS", "YOUR MOVEMENT", "THE WORLD (ONLINE)", "HELP"];
 function navFolded() {
   var list = null;
-  try { list = JSON.parse(localStorage.getItem("ngs_navfold")); } catch (e) { }
+  try { list = JSON.parse(localStorage.getItem("ngs_navfold2")); } catch (e) { }
   if (!list) list = NAV_FOLD_START.slice();
   return list;
 }
@@ -10350,12 +10354,14 @@ function saveKey(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } cat
 function tidyPage(page) {
   var m = $("main");
   clampLong(m);
+  foldNotes(m);
+  shortTables(m);
   foldGroups(m, page);
   if (FOLD_SKIP[page]) return;
   var hs = [];
   for (var i = 0; i < m.children.length; i++) if (m.children[i].tagName == "H2") hs.push(m.children[i]);
   if (hs.length < 3) return;
-  var saved = loadKey("ngs_fold_" + page), bar = document.createElement("div"), links = [];
+  var saved = loadKey("ngs_fold2_" + page), bar = document.createElement("div"), links = [];
   for (var i = 0; i < hs.length; i++) {
     var h = hs[i], box = document.createElement("div"), n = h.nextSibling;
     box.className = "sect"; box.id = "sect" + i;
@@ -10365,7 +10371,7 @@ function tidyPage(page) {
     h.innerHTML = "<span class='arr'></span>" + h.innerHTML;
     h.setAttribute("data-i", i); h.setAttribute("data-page", page);
     h.onclick = function (e) { if (e.target.tagName == "A") return; sectToggle(this.getAttribute("data-page"), +this.getAttribute("data-i")); };
-    var shut = saved[i] !== undefined ? saved[i] : (hs.length >= 4 && i >= 3);
+    var shut = saved[i] !== undefined ? saved[i] : i >= 1;
     sectSet(i, shut);
     links.push("<a href='javascript:sectGo(\"" + page + "\"," + i + ")'>" + esc(h.textContent) + "</a>");
   }
@@ -10382,8 +10388,8 @@ function sectSet(i, shut) {
   h.className = h.className.replace(" shut", "") + (shut ? " shut" : "");
 }
 function sectToggle(page, i) {
-  var saved = loadKey("ngs_fold_" + page), shut = $("sect" + i).style.display != "none";
-  sectSet(i, shut); saved[i] = shut; saveKey("ngs_fold_" + page, saved);
+  var saved = loadKey("ngs_fold2_" + page), shut = $("sect" + i).style.display != "none";
+  sectSet(i, shut); saved[i] = shut; saveKey("ngs_fold2_" + page, saved);
 }
 function sectGo(page, i) {
   if ($("sect" + i).style.display == "none") sectToggle(page, i);
@@ -10392,13 +10398,13 @@ function sectGo(page, i) {
 function sectAll(page, shut) {
   var saved = {};
   for (var i = 0; $("sect" + i); i++) { sectSet(i, shut); saved[i] = shut; }
-  saveKey("ngs_fold_" + page, saved);
+  saveKey("ngs_fold2_" + page, saved);
 }
 function clampLong(m) {
   var ps = m.querySelectorAll("p");
   for (var i = 0; i < ps.length; i++) {
     var p = ps[i];
-    if (p.textContent.length < 330 || p.querySelector("input,select,textarea,button")) continue;
+    if (p.textContent.length < 200 || p.className.indexOf("small") >= 0 || p.querySelector("input,select,textarea,button")) continue;
     p.className += " clamp";
     var a = document.createElement("a");
     a.href = "javascript:void(0)"; a.className = "morelink"; a.innerHTML = "Read more &raquo;";
@@ -10426,6 +10432,31 @@ function foldGroups(m, page) {
 function grpSet(row, shut) {
   row.className = row.className.replace(" shut", "") + (shut ? " shut" : "");
   for (var r = row.nextElementSibling; r && r.className.indexOf("grprow") < 0; r = r.nextElementSibling) r.style.display = shut ? "none" : "";
+}
+function foldNotes(m) {
+  var ps = m.querySelectorAll("p.small");
+  for (var i = 0; i < ps.length; i++) {
+    var p = ps[i];
+    if (p.textContent.length < 90 || p.querySelector("input,select,textarea,button")) continue;
+    p.style.display = "none";
+    var a = document.createElement("a");
+    a.href = "javascript:void(0)"; a.className = "notelink"; a.innerHTML = "&#9432; Explain this";
+    a.onclick = function () { var q = this.nextSibling, open = q.style.display == "none"; q.style.display = open ? "" : "none"; this.innerHTML = open ? "&#9432; Hide explanation" : "&#9432; Explain this"; };
+    p.parentNode.insertBefore(a, p);
+  }
+}
+function shortTables(m) {
+  var ts = m.querySelectorAll("table.data");
+  for (var k = 0; k < ts.length; k++) {
+    var rows = ts[k].rows, t = ts[k];
+    if (rows.length <= 20 || t.querySelector("select,input,th.grouphead")) continue;
+    for (var i = 11; i < rows.length - 1; i++) rows[i].style.display = "none";
+    var a = document.createElement("a");
+    a.href = "javascript:void(0)"; a.className = "morelink"; a.innerHTML = "Show all " + (rows.length - 1) + " rows &raquo;";
+    a.onclick = function () { var r = this.previousSibling.rows || this.previousSibling.querySelector("table").rows, open = r[11].style.display == "none"; for (var i = 11; i < r.length - 1; i++) r[i].style.display = open ? "" : "none"; this.innerHTML = open ? "&laquo; Show fewer rows" : "Show all " + (r.length - 1) + " rows &raquo;"; };
+    var box = t.parentNode.className == "tablewrap" ? t.parentNode : t;
+    box.parentNode.insertBefore(a, box.nextSibling);
+  }
 }
 
 </script>
